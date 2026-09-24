@@ -1,0 +1,58 @@
+{
+ "version": "0.1",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "cost": 0.0101,
+ "tasks_count": 1,
+ "tasks": [
+  {
+   "id": "synthetic",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "cost": 0.0101,
+   "result": [
+    {
+     "items": [
+      {
+       "keyword": "client portal",
+       "keyword_info": {
+        "search_volume": 8100
+       },
+       "keyword_properties": {
+        "keyword_difficulty": 48
+       },
+       "search_intent_info": {
+        "main_intent": "commercial"
+       }
+      },
+      {
+       "keyword": "client project workspace",
+       "keyword_info": {
+        "search_volume": 90
+       },
+       "keyword_properties": {
+        "keyword_difficulty": 12
+       },
+       "search_intent_info": {
+        "main_intent": "commercial"
+       }
+      },
+      {
+       "keyword": "client workspace",
+       "keyword_info": {
+        "search_volume": 320
+       },
+       "keyword_properties": {
+        "keyword_difficulty": 22
+       },
+       "search_intent_info": {
+        "main_intent": "commercial"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "_note": "SYNTHETIC fixture in DataForSEO documented shape; replace with a recorded response"
+}
