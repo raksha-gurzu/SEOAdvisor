@@ -1,0 +1,46 @@
+{
+ "version": "0.1",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "cost": 0.0101,
+ "tasks_count": 1,
+ "tasks": [
+  {
+   "id": "synthetic",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "cost": 0.0101,
+   "result": [
+    {
+     "items": [
+      {
+       "keyword": "client workspace software",
+       "keyword_info": {
+        "search_volume": 210
+       },
+       "keyword_properties": {
+        "keyword_difficulty": 28
+       },
+       "search_intent_info": {
+        "main_intent": "commercial"
+       }
+      },
+      {
+       "keyword": "shared client workspace",
+       "keyword_info": {
+        "search_volume": 70
+       },
+       "keyword_properties": {
+        "keyword_difficulty": 15
+       },
+       "search_intent_info": {
+        "main_intent": "commercial"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "_note": "SYNTHETIC fixture in DataForSEO documented shape; replace with a recorded response"
+}

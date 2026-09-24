@@ -1,0 +1,39 @@
+{
+ "version": "0.1",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "cost": 0.002,
+ "tasks_count": 1,
+ "tasks": [
+  {
+   "id": "synthetic",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "cost": 0.002,
+   "result": [
+    {
+     "keyword": "client workspace",
+     "items": [
+      {
+       "type": "autocomplete",
+       "suggestion": "client workspace"
+      },
+      {
+       "type": "autocomplete",
+       "suggestion": "client workspace app"
+      },
+      {
+       "type": "autocomplete",
+       "suggestion": "client workspace software"
+      },
+      {
+       "type": "autocomplete",
+       "suggestion": "client workspace app"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "_note": "SYNTHETIC fixture in DataForSEO documented shape; replace with a recorded response"
+}

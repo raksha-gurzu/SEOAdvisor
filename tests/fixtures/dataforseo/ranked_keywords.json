@@ -1,0 +1,62 @@
+{
+ "version": "0.1",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "cost": 0.0111,
+ "tasks_count": 1,
+ "tasks": [
+  {
+   "id": "synthetic",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "cost": 0.0111,
+   "result": [
+    {
+     "items": [
+      {
+       "keyword_data": {
+        "keyword": "client portal software",
+        "keyword_info": {
+         "search_volume": 2900
+        },
+        "keyword_properties": {
+         "keyword_difficulty": 41
+        },
+        "search_intent_info": {
+         "main_intent": "commercial"
+        }
+       },
+       "ranked_serp_element": {
+        "serp_item": {
+         "rank_group": 4,
+         "url": "https://clientportal.io/"
+        }
+       }
+      },
+      {
+       "keyword_data": {
+        "keyword": "agency client portal",
+        "keyword_info": {
+         "search_volume": 480
+        },
+        "keyword_properties": {
+         "keyword_difficulty": 25
+        },
+        "search_intent_info": {
+         "main_intent": "commercial"
+        }
+       },
+       "ranked_serp_element": {
+        "serp_item": {
+         "rank_group": 2,
+         "url": "https://clientportal.io/"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "_note": "SYNTHETIC fixture in DataForSEO documented shape; replace with a recorded response"
+}

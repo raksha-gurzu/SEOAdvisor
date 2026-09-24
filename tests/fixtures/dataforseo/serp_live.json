@@ -1,0 +1,161 @@
+{
+ "version": "0.1",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "cost": 0.002,
+ "tasks_count": 1,
+ "tasks": [
+  {
+   "id": "synthetic",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "cost": 0.002,
+   "result": [
+    {
+     "keyword": "client project workspace",
+     "location_code": 2840,
+     "language_code": "en",
+     "items_count": 15,
+     "items": [
+      {
+       "type": "people_also_ask",
+       "rank_group": 1,
+       "items": [
+        {
+         "type": "people_also_ask_element",
+         "title": "What is a client project workspace?"
+        },
+        {
+         "type": "people_also_ask_element",
+         "title": "How much does a client portal cost?"
+        }
+       ]
+      },
+      {
+       "type": "organic",
+       "rank_group": 1,
+       "rank_absolute": 2,
+       "domain": "reddit.com",
+       "url": "https://www.reddit.com/r/agency/comments/abc/client_portal/",
+       "title": "Best client portal? : r/agency",
+       "description": "desc 1"
+      },
+      {
+       "type": "organic",
+       "rank_group": 2,
+       "rank_absolute": 3,
+       "domain": "clientportal.io",
+       "url": "https://clientportal.io/",
+       "title": "Client Portal Software for Agencies",
+       "description": "desc 2"
+      },
+      {
+       "type": "organic",
+       "rank_group": 3,
+       "rank_absolute": 4,
+       "domain": "acmehq.com",
+       "url": "https://www.acmehq.com/blog/best-client-portal-software",
+       "title": "12 Best Client Portal Software in 2026",
+       "description": "desc 3"
+      },
+      {
+       "type": "organic",
+       "rank_group": 4,
+       "rank_absolute": 5,
+       "domain": "suitedash.com",
+       "url": "https://suitedash.com/features/client-portal/",
+       "title": "Client Portal | SuiteDash",
+       "description": "desc 4"
+      },
+      {
+       "type": "organic",
+       "rank_group": 5,
+       "rank_absolute": 6,
+       "domain": "youtube.com",
+       "url": "https://www.youtube.com/watch?v=xyz",
+       "title": "How to set up a client portal",
+       "description": "desc 5"
+      },
+      {
+       "type": "organic",
+       "rank_group": 6,
+       "rank_absolute": 7,
+       "domain": "copilot.com",
+       "url": "https://copilot.com/",
+       "title": "Copilot: the client portal for modern service businesses",
+       "description": "desc 6"
+      },
+      {
+       "type": "organic",
+       "rank_group": 7,
+       "rank_absolute": 8,
+       "domain": "g2.com",
+       "url": "https://www.g2.com/categories/client-portal",
+       "title": "Best Client Portal Software 2026 | G2",
+       "description": "desc 7"
+      },
+      {
+       "type": "organic",
+       "rank_group": 8,
+       "rank_absolute": 9,
+       "domain": "moxo.com",
+       "url": "https://www.moxo.com/blog/what-is-a-client-portal",
+       "title": "What Is a Client Portal? A Complete Guide",
+       "description": "desc 8"
+      },
+      {
+       "type": "organic",
+       "rank_group": 9,
+       "rank_absolute": 10,
+       "domain": "huddle.com",
+       "url": "https://huddle.com/client-workspace/",
+       "title": "Client Workspace | Huddle",
+       "description": "desc 9"
+      },
+      {
+       "type": "organic",
+       "rank_group": 10,
+       "rank_absolute": 11,
+       "domain": "acmehq.com",
+       "url": "https://www.acmehq.com/pricing",
+       "title": "Pricing | Acme",
+       "description": "desc 10"
+      },
+      {
+       "type": "organic",
+       "rank_group": 11,
+       "rank_absolute": 12,
+       "domain": "docs.example.com",
+       "url": "https://docs.example.com/client-portal.pdf",
+       "title": "Client portal whitepaper",
+       "description": "desc 11"
+      },
+      {
+       "type": "organic",
+       "rank_group": 12,
+       "rank_absolute": 13,
+       "domain": "notion.com",
+       "url": "https://www.notion.com/templates/client-portal",
+       "title": "Client Portal Template | Notion",
+       "description": "desc 12"
+      },
+      {
+       "type": "video",
+       "rank_group": 1,
+       "items": []
+      },
+      {
+       "type": "related_searches",
+       "rank_group": 1,
+       "items": [
+        "client portal free",
+        "client workspace app"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "_note": "SYNTHETIC fixture in DataForSEO documented shape; replace with a recorded response"
+}
