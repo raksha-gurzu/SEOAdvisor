@@ -4,6 +4,8 @@ Google only suggests phrases people actually search, so a phrase that autocomple
 itself is demand evidence in free mode.
 """
 
+from typing import Protocol
+
 import httpx
 
 from seo_engine.providers.base import DailyCache, request_with_retry
@@ -13,6 +15,10 @@ SUGGEST_URL = "https://suggestqueries.google.com/complete/search"
 
 def norm(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+class AutocompleteProvider(Protocol):
+    def suggest(self, phrase: str, country: str) -> list[str]: ...
 
 
 class GoogleAutocomplete:

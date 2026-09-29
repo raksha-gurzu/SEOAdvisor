@@ -1,4 +1,18 @@
-import type { Defaults, Health, RunRecord, RunSettings, RunSummary } from './types'
+import type {
+  Defaults,
+  GapDefaults,
+  GapRecord,
+  GapSettingsIn,
+  GapSummary,
+  Health,
+  RunRecord,
+  RunSettings,
+  RunSummary,
+  SnapshotDefaults,
+  SnapshotRecord,
+  SnapshotSettingsIn,
+  SnapshotSummary,
+} from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`/api${path}`, {
@@ -27,6 +41,18 @@ export const api = {
   startRun: (page_text: string, settings: RunSettings, source_url: string | null = null) =>
     request<{ id: string }>('/runs', { method: 'POST', body: JSON.stringify({ page_text, settings, source_url }) }),
   deleteRun: (id: string) => request<void>(`/runs/${id}`, { method: 'DELETE' }),
+  gapDefaults: () => request<GapDefaults>('/gaps/defaults'),
+  listGaps: () => request<GapSummary[]>('/gaps'),
+  getGap: (id: string) => request<GapRecord>(`/gaps/${id}`),
+  startGap: (site: string, competitors: string[], settings: GapSettingsIn) =>
+    request<{ id: string }>('/gaps', { method: 'POST', body: JSON.stringify({ site, competitors, settings }) }),
+  deleteGap: (id: string) => request<void>(`/gaps/${id}`, { method: 'DELETE' }),
+  snapshotDefaults: () => request<SnapshotDefaults>('/snapshots/defaults'),
+  listSnapshots: () => request<SnapshotSummary[]>('/snapshots'),
+  getSnapshot: (id: string) => request<SnapshotRecord>(`/snapshots/${id}`),
+  startSnapshot: (site: string, settings: SnapshotSettingsIn) =>
+    request<{ id: string }>('/snapshots', { method: 'POST', body: JSON.stringify({ site, settings }) }),
+  deleteSnapshot: (id: string) => request<void>(`/snapshots/${id}`, { method: 'DELETE' }),
   extract: (url: string) =>
     request<{ url: string; title: string; text: string; word_count: number; method: string }>('/extract', {
       method: 'POST',

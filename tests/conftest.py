@@ -32,3 +32,10 @@ def cache(settings: Settings) -> DailyCache:
 @pytest.fixture
 def run(settings: Settings) -> Run:
     return Run(page_text="Emitii is a client project workspace for agencies.", settings=settings)
+
+
+@pytest.fixture(autouse=True)
+def allow_test_hosts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests use made-up hosts (s.com, moxo.com) served by respx, with no DNS. The address
+    guard is switched back on in the tests that check it (test_providers_fetcher.py)."""
+    monkeypatch.setattr("seo_engine.providers.base.address_check", lambda url: True)

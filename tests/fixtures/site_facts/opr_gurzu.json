@@ -1,0 +1,409 @@
+{
+ "as_of": "2026-09-01",
+ "count": 2,
+ "results": [
+  {
+   "domain": "gurzu.com",
+   "found": true,
+   "open_page_rank": 1.78,
+   "rank": 2634099,
+   "referring_domains": 13,
+   "history": [
+    {
+     "date": "2020-05-01",
+     "open_page_rank": 0.41,
+     "estimated": false
+    },
+    {
+     "date": "2020-06-01",
+     "open_page_rank": 0.47,
+     "estimated": true
+    },
+    {
+     "date": "2020-07-01",
+     "open_page_rank": 0.53,
+     "estimated": true
+    },
+    {
+     "date": "2020-08-01",
+     "open_page_rank": 0.58,
+     "estimated": true
+    },
+    {
+     "date": "2020-09-01",
+     "open_page_rank": 0.64,
+     "estimated": false
+    },
+    {
+     "date": "2020-10-01",
+     "open_page_rank": 0.79,
+     "estimated": true
+    },
+    {
+     "date": "2020-11-01",
+     "open_page_rank": 0.94,
+     "estimated": true
+    },
+    {
+     "date": "2020-12-01",
+     "open_page_rank": 1.08,
+     "estimated": true
+    },
+    {
+     "date": "2021-01-01",
+     "open_page_rank": 1.23,
+     "estimated": false
+    },
+    {
+     "date": "2021-02-01",
+     "open_page_rank": 1.19,
+     "estimated": true
+    },
+    {
+     "date": "2021-03-01",
+     "open_page_rank": 1.15,
+     "estimated": true
+    },
+    {
+     "date": "2021-04-01",
+     "open_page_rank": 1.1,
+     "estimated": true
+    },
+    {
+     "date": "2021-05-01",
+     "open_page_rank": 1.06,
+     "estimated": false
+    },
+    {
+     "date": "2021-06-01",
+     "open_page_rank": 1.08,
+     "estimated": true
+    },
+    {
+     "date": "2021-07-01",
+     "open_page_rank": 1.1,
+     "estimated": true
+    },
+    {
+     "date": "2021-08-01",
+     "open_page_rank": 1.12,
+     "estimated": true
+    },
+    {
+     "date": "2021-09-01",
+     "open_page_rank": 1.14,
+     "estimated": false
+    },
+    {
+     "date": "2021-10-01",
+     "open_page_rank": 1.09,
+     "estimated": true
+    },
+    {
+     "date": "2021-11-01",
+     "open_page_rank": 1.05,
+     "estimated": true
+    },
+    {
+     "date": "2021-12-01",
+     "open_page_rank": 1,
+     "estimated": true
+    },
+    {
+     "date": "2022-01-01",
+     "open_page_rank": 0.95,
+     "estimated": false
+    },
+    {
+     "date": "2022-02-01",
+     "open_page_rank": 0.93,
+     "estimated": true
+    },
+    {
+     "date": "2022-03-01",
+     "open_page_rank": 0.91,
+     "estimated": true
+    },
+    {
+     "date": "2022-04-01",
+     "open_page_rank": 0.89,
+     "estimated": true
+    },
+    {
+     "date": "2022-05-01",
+     "open_page_rank": 0.86,
+     "estimated": true
+    },
+    {
+     "date": "2022-06-01",
+     "open_page_rank": 0.84,
+     "estimated": true
+    },
+    {
+     "date": "2022-07-01",
+     "open_page_rank": 0.82,
+     "estimated": true
+    },
+    {
+     "date": "2022-08-01",
+     "open_page_rank": 0.8,
+     "estimated": false
+    },
+    {
+     "date": "2022-09-01",
+     "open_page_rank": 0.97,
+     "estimated": true
+    },
+    {
+     "date": "2022-10-01",
+     "open_page_rank": 1.14,
+     "estimated": true
+    },
+    {
+     "date": "2022-11-01",
+     "open_page_rank": 1.31,
+     "estimated": true
+    },
+    {
+     "date": "2022-12-01",
+     "open_page_rank": 1.48,
+     "estimated": true
+    },
+    {
+     "date": "2023-01-01",
+     "open_page_rank": 1.65,
+     "estimated": false
+    },
+    {
+     "date": "2023-02-01",
+     "open_page_rank": 1.68,
+     "estimated": true
+    },
+    {
+     "date": "2023-03-01",
+     "open_page_rank": 1.7,
+     "estimated": true
+    },
+    {
+     "date": "2023-04-01",
+     "open_page_rank": 1.73,
+     "estimated": true
+    },
+    {
+     "date": "2023-05-01",
+     "open_page_rank": 1.75,
+     "estimated": true
+    },
+    {
+     "date": "2023-06-01",
+     "open_page_rank": 1.78,
+     "estimated": true
+    },
+    {
+     "date": "2023-07-01",
+     "open_page_rank": 1.8,
+     "estimated": true
+    },
+    {
+     "date": "2023-08-01",
+     "open_page_rank": 1.83,
+     "estimated": true
+    },
+    {
+     "date": "2023-09-01",
+     "open_page_rank": 1.85,
+     "estimated": true
+    },
+    {
+     "date": "2023-10-01",
+     "open_page_rank": 1.88,
+     "estimated": false
+    },
+    {
+     "date": "2023-11-01",
+     "open_page_rank": 2.01,
+     "estimated": false
+    },
+    {
+     "date": "2023-12-01",
+     "open_page_rank": 1.92,
+     "estimated": true
+    },
+    {
+     "date": "2024-01-01",
+     "open_page_rank": 1.83,
+     "estimated": true
+    },
+    {
+     "date": "2024-02-01",
+     "open_page_rank": 1.74,
+     "estimated": false
+    },
+    {
+     "date": "2024-03-01",
+     "open_page_rank": 1.87,
+     "estimated": true
+    },
+    {
+     "date": "2024-04-01",
+     "open_page_rank": 1.99,
+     "estimated": false
+    },
+    {
+     "date": "2024-05-01",
+     "open_page_rank": 1.81,
+     "estimated": false
+    },
+    {
+     "date": "2024-06-01",
+     "open_page_rank": 1.79,
+     "estimated": false
+    },
+    {
+     "date": "2024-07-01",
+     "open_page_rank": 1.76,
+     "estimated": false
+    },
+    {
+     "date": "2024-08-01",
+     "open_page_rank": 1.69,
+     "estimated": false
+    },
+    {
+     "date": "2024-09-01",
+     "open_page_rank": 1.94,
+     "estimated": false
+    },
+    {
+     "date": "2024-10-01",
+     "open_page_rank": 1.79,
+     "estimated": false
+    },
+    {
+     "date": "2024-11-01",
+     "open_page_rank": 2.41,
+     "estimated": false
+    },
+    {
+     "date": "2024-12-01",
+     "open_page_rank": 2.36,
+     "estimated": false
+    },
+    {
+     "date": "2025-01-01",
+     "open_page_rank": 2.51,
+     "estimated": false
+    },
+    {
+     "date": "2025-02-01",
+     "open_page_rank": 2.39,
+     "estimated": false
+    },
+    {
+     "date": "2025-03-01",
+     "open_page_rank": 2.01,
+     "estimated": false
+    },
+    {
+     "date": "2025-04-01",
+     "open_page_rank": 1.83,
+     "estimated": false
+    },
+    {
+     "date": "2025-05-01",
+     "open_page_rank": 2.01,
+     "estimated": false
+    },
+    {
+     "date": "2025-06-01",
+     "open_page_rank": 2.16,
+     "estimated": false
+    },
+    {
+     "date": "2025-07-01",
+     "open_page_rank": 2.52,
+     "estimated": false
+    },
+    {
+     "date": "2025-08-01",
+     "open_page_rank": 2.49,
+     "estimated": false
+    },
+    {
+     "date": "2025-09-01",
+     "open_page_rank": 2.4,
+     "estimated": false
+    },
+    {
+     "date": "2025-10-01",
+     "open_page_rank": 2.42,
+     "estimated": false
+    },
+    {
+     "date": "2025-11-01",
+     "open_page_rank": 2.43,
+     "estimated": false
+    },
+    {
+     "date": "2025-12-01",
+     "open_page_rank": 2.17,
+     "estimated": false
+    },
+    {
+     "date": "2026-01-01",
+     "open_page_rank": 2,
+     "estimated": false
+    },
+    {
+     "date": "2026-02-01",
+     "open_page_rank": 2.15,
+     "estimated": false
+    },
+    {
+     "date": "2026-03-01",
+     "open_page_rank": 2.08,
+     "estimated": false
+    },
+    {
+     "date": "2026-04-01",
+     "open_page_rank": 2.07,
+     "estimated": false
+    },
+    {
+     "date": "2026-05-01",
+     "open_page_rank": 1.71,
+     "estimated": false
+    },
+    {
+     "date": "2026-06-01",
+     "open_page_rank": 2.64,
+     "estimated": false
+    },
+    {
+     "date": "2026-07-01",
+     "open_page_rank": 2.56,
+     "estimated": false
+    },
+    {
+     "date": "2026-08-01",
+     "open_page_rank": 2.74,
+     "estimated": false
+    },
+    {
+     "date": "2026-09-01",
+     "open_page_rank": 1.78,
+     "estimated": false
+    }
+   ]
+  },
+  {
+   "domain": "no-such-domain-xyz123.com",
+   "found": false,
+   "open_page_rank": null,
+   "rank": null,
+   "referring_domains": null,
+   "history": []
+  }
+ ],
+ "invalid": []
+}

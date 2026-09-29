@@ -106,3 +106,9 @@ def guess_page_type(url: str, title: str = "", schema_type: str = "") -> str:
 
 def domain_of(url: str) -> str:
     return urlparse(url).netloc.lower().removeprefix("www.")
+
+
+def owns(domain: str, target: str) -> bool:
+    """`www.moxo.com` and `blog.moxo.com` rank for moxo.com; `notmoxo.com` does not."""
+    domain, target = domain.lower().removeprefix("www."), target.lower().removeprefix("www.")
+    return domain == target or domain.endswith("." + target)

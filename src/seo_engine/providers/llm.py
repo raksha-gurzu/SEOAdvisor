@@ -10,7 +10,7 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from seo_engine.config import ModelSettings, Secrets
-from seo_engine.providers.base import CostSink, no_cost, request_with_retry
+from seo_engine.providers.base import CostSink, DailyCache, no_cost, request_with_retry
 
 Tier = Literal["judgment", "bulk", "checker"]
 T = TypeVar("T", bound=BaseModel)
@@ -100,3 +100,33 @@ class DeepSeekLLM:
                     },
                 ]
         raise AssertionError("unreachable")
+
+
+class DailyCachedLLM:
+    """Same prompt, schema and model on the same day: the stored answer, at no cost (rule 4).
+
+    Also makes re-runs stable: without it a second analysis the same day could pick other
+    phrases and spend search credits on them.
+    """
+
+    def __init__(self, llm: LLMProvider, cache: DailyCache, models: ModelSettings) -> None:
+        self.llm = llm
+        self.cache = cache
+        self.models = models
+
+    def structured(self, system: str, user: str, schema: type[T], tier: Tier = "bulk") -> T:
+        key = {
+            "model": getattr(self.models, tier),
+            "schema": schema.__name__,
+            "system": system,
+            "user": user,
+        }
+        hit = self.cache.get("llm", key)
+        if hit is not None:
+            try:
+                return schema.model_validate(hit)
+            except ValidationError:
+                pass  # the schema changed since it was stored: ask again
+        out = self.llm.structured(system, user, schema, tier)
+        self.cache.set("llm", key, out.model_dump())
+        return out

@@ -60,6 +60,48 @@ Work top to bottom. Tick a task only when its "done when" is true. Details for e
 - [x] Readable report (PRD §5.10): `GET /api/runs/{id}/report.docx`, Word document laid out like the action plan with placeholders highlighted
 - [ ] Eval: team reviews 5 drafts for invented facts and tone before relying on them
 
+## App: Keyword Gap (branch `feature/keyword-gap`)
+
+Our domain vs 1 to 4 competitors: keyword positions, estimated visits and top keywords to add. Steps, research and sources: `docs/KEYWORD-GAP-PLAN.md` (each step waits for owner approval).
+
+- [x] Step 0: docs (PRD §5.11, ARCHITECTURE §13), `GapSettings`, keys, live tests (Serper page billing, AI Overview field, Bing)
+  - Status: 1 credit per page of 10; `num: 20` returns only 10; no AI Overview field; Bing works. Fixed `bing.py` counting rows instead of weeks (rare phrases were 4-10x too high)
+- [x] Step 1: site reader (`providers/sitemap.py`)
+  - Status: 58 tests; live: gurzu.com 30 pages 6.4 s, emitii.com 6 pages 8.3 s (browser for JS homepage), moxo.com 30 pages 2.9 s. Also fixed: robots.txt now RFC 9309 (Protego); too_short pages cached when no browser retry
+- [x] Step 2: keyword discovery (`tools/site_keywords.py`)
+  - Status: tests in `tests/test_site_keywords.py`; live emitii.com vs moxo.com + clinked.com: 60 keywords, 26.8 s, $0.0044; same-day re-run identical at $0 (`DailyCachedLLM`). Business fit (0-3) filters before the Google check. Fixed: Bing ThrottleUser handling, API key redacted from Bing errors. Bing has numbers for only ~2% of B2B keywords (owner: free, honest labels)
+- [x] Step 3: rank check with Serper pages (`tools/rank_check.py`, fixes `serper.py` `num: 20`)
+  - Status: 17 tests; live: 60 keywords, 25.7 s, 120 credits (as calculated); ~19 results per keyword (pages hold ~9). Briefs now get 20 results for 2 credits (were 10 for 1)
+- [x] Step 4: metrics (demand, rough Google estimate, difficulty band, intent, visits, clusters)
+  - Status: `tools/keyword_metrics.py`, 16 hand-calculated tests; live difficulty hand check matches (25). Live: visits 0 or unknown for all sites on this set (Bing numbers only for broad keywords no site ranks for)
+- [x] Step 5: gap categories and the order of keywords to add (`tools/keyword_gap.py`)
+  - Status: 16 hand-calculated tests; live: 5 keywords to add for emitii.com (agency client portal cluster: both competitors rank #3-#8). 49 of 60 checked keywords had no site on page 1-2 (G13, possible second pass later)
+- [x] Step 6: `gap_pipeline.py` and `/api/gaps` endpoints
+  - Status: 27 tests (pipeline, CSV injection guard, API lifecycle, SSRF guard); shared `JsonStore` + background runner with briefs; live API run 3.1 s, 0 credits (cache)
+- [x] Step 7: web UI: navigation, form, progress
+  - Status: sidebar tool switch, `NewGap`/`GapView`/`GapResults`; build + lint pass; screenshots checked (light, dark, 390 px, running, failed). Domain colours validated with the dataviz palette validator. No cancel for a running analysis (G14)
+- [x] Step 8: web UI: results dashboard
+  - Status: site cards, overlap bars (instead of a 5-set Venn), top-keyword cards, sortable/filterable table with expandable Google results, competitor panels, method note; browser-checked light/dark/390 px, no console errors
+- [ ] Step 9: live run, 5 positions checked by hand, guide chapter
+- [x] Review round (3 reviewers, 52 findings) fixed: SSRF guard on every request, sitemap request cap, gzip bomb, transient robots failures not cached, www kept, overlapping sites rejected, atomic cache, UI paging/polling/a11y fixes, docs
+- [x] G13 low yield: second pass (related searches where competitors rank; live Emitii: 10 more keywords, 5 with a site on page 1-2) and suggested competitors (live Gurzu: scnsoft.com, appinventiv.com, globant.com)
+- [x] Second review round: DNS-rebinding-safe connections, `is_global` address check, browser traffic served by the guarded client (offline test: 0 connections to a blocked server), WebSocket hang and preconnect leak fixed, brand and second-pass fixes
+- [ ] G14: a Cancel button for a running analysis (not started; owner decision)
+
+## App: Site Snapshot (branch `feature/keyword-gap`)
+
+Plan, research and owner decisions: `docs/SITE-SNAPSHOT-PLAN.md`.
+
+- [x] Step 0: docs, `SnapshotSettings`, free live tests (Open PageRank key added; Chrome UX Report skipped for now)
+- [x] Step 1: providers (Open PageRank, Majestic Million, CrUX, domain dates), 23 tests
+- [x] Step 2: technical checks (10 checks, live on 4 sites)
+- [x] Step 3: snapshot tool and pipeline (live on gurzu.com; list pages now skipped)
+- [x] Step 4: API and store (`/api/snapshots`)
+- [x] Step 5: web app (form, progress, results page, link-score chart)
+- [x] Step 6: review (24 findings fixed), guide chapter 21, docs
+- [ ] Owner: hand check of 3 positions and the site age (list in `docs/SITE-SNAPSHOT-PLAN.md`, Step 6)
+  - Status: live gurzu.com vs 4 competitors: 99 s, 120 credits, $0.011; 2 keywords to add, 57 of 60 keywords with no site on pages 1-2 (G13). Guide chapter 20 done (checker: All good). Waiting: owner's hand check of 5 positions
+
 ## Phase 2: One-agent prototype (weeks 3 to 4)
 
 - [ ] `agent/`: one agent with the 5 consolidated tools and clear instructions; outputs a `Brief`

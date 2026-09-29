@@ -29,19 +29,32 @@ export function RunView({ id, onChanged }: { id: string; onChanged: () => void }
   const [tab, setTab] = useState<Tab>('plan')
   const [confirming, setConfirming] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     let timer: number | undefined
+    let failures = 0
     const load = async () => {
       try {
         const next = await api.getRun(id)
         if (cancelled) return
+        failures = 0
+        setReconnecting(false)
         setRec(next)
         if (next.status === 'queued' || next.status === 'running') timer = window.setTimeout(load, POLL_MS)
         else onChanged()
       } catch (e) {
-        if (!cancelled) setError((e as Error).message === 'run not found' ? 'This brief was deleted.' : (e as Error).message)
+        if (cancelled) return
+        if ((e as Error).message === 'run not found') {
+          setError('This brief was deleted.')
+          return
+        }
+        // A network blip or a restarting server: keep what is on screen and try again.
+        failures += 1
+        setReconnecting(true)
+        timer = window.setTimeout(load, Math.min(POLL_MS * 2 ** failures, 15_000))
       }
     }
     load()
@@ -61,9 +74,14 @@ export function RunView({ id, onChanged }: { id: string; onChanged: () => void }
   const title = site ?? run.phrases[0]?.text ?? 'Your page'
 
   async function remove() {
-    await api.deleteRun(id)
-    onChanged()
-    go({ page: 'new' })
+    setActionError(null)
+    try {
+      await api.deleteRun(id)
+      onChanged()
+      go({ page: 'new' })
+    } catch (e) {
+      setActionError((e as Error).message)
+    }
   }
 
   async function retry() {
@@ -72,6 +90,8 @@ export function RunView({ id, onChanged }: { id: string; onChanged: () => void }
       const { id: next } = await api.startRun(run.page_text, run.settings, run.source_url)
       onChanged()
       go({ page: 'run', id: next })
+    } catch (e) {
+      setActionError((e as Error).message)
     } finally {
       setRetrying(false)
     }
@@ -108,6 +128,9 @@ export function RunView({ id, onChanged }: { id: string; onChanged: () => void }
           </div>
         )}
       </header>
+
+      {reconnecting && <p className="muted small" role="status">Can’t reach the server right now. Reconnecting…</p>}
+      {actionError && <Alert tone="bad">{actionError}</Alert>}
 
       {(active || rec.status === 'failed') && (
         <section className="card progress-card">

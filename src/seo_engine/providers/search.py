@@ -31,7 +31,12 @@ class SerpResults(BaseModel):
 
 
 class SearchProvider(Protocol):
-    def top(self, phrase: str, country: str, n: int) -> SerpResults: ...
+    def top(
+        self, phrase: str, country: str, n: int, stop_domains: frozenset[str] = frozenset()
+    ) -> SerpResults:
+        """Top n results. `stop_domains`: a provider may stop fetching deeper results once all
+        these domains have appeared (saves paid pages); providers without paging ignore it."""
+        ...
 
 
 class SearchUnavailable(RuntimeError):
@@ -44,11 +49,15 @@ class FallbackSearch:
     def __init__(self, providers: list[SearchProvider]) -> None:
         self.providers = providers
 
-    def top(self, phrase: str, country: str, n: int) -> SerpResults:
+    def top(
+        self, phrase: str, country: str, n: int, stop_domains: frozenset[str] = frozenset()
+    ) -> SerpResults:
         reasons: list[str] = []
         for provider in self.providers:
             try:
-                return provider.top(phrase, country, n)
+                if stop_domains:
+                    return provider.top(phrase, country, n, stop_domains=stop_domains)
+                return provider.top(phrase, country, n)  # providers written before stop_domains
             except SearchUnavailable as exc:
                 reasons.append(f"{type(provider).__name__}: {exc}")
         raise SearchUnavailable("no search provider available; " + "; ".join(reasons))
@@ -118,7 +127,9 @@ class DataForSEOSearch:
         )
         return cls(client, DailyCache(settings.cache_dir), settings, cost_sink)
 
-    def top(self, phrase: str, country: str, n: int) -> SerpResults:
+    def top(
+        self, phrase: str, country: str, n: int, stop_domains: frozenset[str] = frozenset()
+    ) -> SerpResults:
         depth = 10 if n <= 10 else 20 if n <= 20 else 100
         task = {
             "keyword": phrase,

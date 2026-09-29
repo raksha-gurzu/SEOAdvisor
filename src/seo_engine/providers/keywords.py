@@ -27,6 +27,8 @@ class RankedKeyword(KeywordMetrics):
 
 
 class KeywordProvider(Protocol):
+    unmeasured: set[str]  # keywords `metrics` could not measure (volume 0 means "unknown")
+
     def metrics(self, keywords: list[str], country: str) -> list[KeywordMetrics]: ...
     def autocomplete(self, phrase: str, country: str) -> list[str]: ...
     def suggestions(self, phrase: str, country: str, limit: int) -> list[KeywordMetrics]: ...
@@ -63,6 +65,7 @@ class DataForSEOKeywords:
         self.cache = cache
         self.settings = settings
         self.cost_sink = cost_sink
+        self.unmeasured: set[str] = set()
 
     @classmethod
     def from_env(cls, settings: Settings, cost_sink: CostSink = no_cost) -> "DataForSEOKeywords":

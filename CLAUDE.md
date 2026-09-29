@@ -4,6 +4,10 @@
 
 An engine that takes the text of one web page and returns a brief telling the team how to make that page rank higher on Google and get cited by AI answer engines. The brief contains target search phrases, title tag options, a meta description, must-cover topics, gaps, suggested headings, an intent warning, a coverage score, and a suggested SEO draft of the page. The draft uses only facts from the page; anything it cannot know is a visible `[ADD: …]` placeholder for the team to fill. The team reviews and publishes; the engine never publishes or silently changes the page.
 
+A second feature, **Keyword Gap**, compares a website with up to 4 competitor websites: it reads their sitemaps, finds the searches their pages target, checks Google positions, and lists the keywords to add with plain reasons. It is a separate fixed pipeline (`gap_pipeline.py`), not part of the brief agent. Plan, research and owner decisions: `docs/KEYWORD-GAP-PLAN.md`.
+
+A third feature, **Site Snapshot**, summarises one website on one page: link score (Open PageRank) and its history, popularity (Tranco, Majestic Million), where its pages show on Google (a sample, never a total), top pages, competitors, speed for real visitors (Chrome UX Report, optional key), registration date and first Wayback capture, and 10 technical checks. It is a separate fixed pipeline (`snapshot_pipeline.py`) that reuses the Keyword Gap code for one site. Plan, research and owner decisions: `docs/SITE-SNAPSHOT-PLAN.md`.
+
 Internal Gurzu tool first, built to product quality so it can become a product later.
 
 ## Read before working
@@ -28,17 +32,25 @@ Internal Gurzu tool first, built to product quality so it can become a product l
 src/seo_engine/
   models.py        Pydantic models (Run, Phrase, Page, TopicCount, Gap, Brief)
   config.py        run settings and defaults
-  providers/       one interface per data source (search, keywords, fetcher, llm, embeddings)
-  tools/           the 5 tools
+  providers/       one interface per data source (search, keywords, fetcher, llm, embeddings,
+                   autocomplete, sitemap, openpagerank, majestic, crux, domain_age, site_probe);
+                   base.py: daily cache, address guard, bounded downloads
+  tools/           the 5 brief tools, plus 4 Keyword Gap tools (site_keywords, rank_check,
+                   keyword_metrics, keyword_gap) and 2 Site Snapshot tools (site_checks,
+                   site_snapshot)
   pipeline.py      fixed order: tools -> brief writer -> snippet check (serves the API)
+  gap_pipeline.py  Keyword Gap: read sites -> find keywords -> check Google -> measure -> compare
+  gap_report.py    Keyword Gap CSV download
+  snapshot_pipeline.py  Site Snapshot: read site -> keywords -> Google -> facts -> summary
+  snapshot_report.py    Site Snapshot CSV download
   brief.py         Brief Writer LLM call + code-filled brief assembly
-  api/             FastAPI app and file-based run store
+  api/             FastAPI app and file-based run stores (briefs, Keyword Gap, Site Snapshot)
   agent/           current: one agent + instructions using the 5 tools
   workflow/        only if evaluation requires it: LangGraph graph with more agents
 evals/             20 test pages + hand-written gold briefs + run_evals.py
 scripts/           check_live.py: live smoke test of every provider
 web/               React + TypeScript (Vite) UI
-runs/              saved runs from the API, git-ignored
+runs/              saved runs from the API (Keyword Gap in runs/gaps/, snapshots in runs/snapshots/), git-ignored
 tests/             unit tests, one file per tool
 cache/             daily cache, git-ignored
 ```
@@ -50,6 +62,8 @@ pip install -e ".[dev]"      # install
 pytest                       # unit tests
 python evals/run_evals.py    # quality check against the gold briefs
 python scripts/check_live.py # live check of every provider (only DeepSeek costs, fractions of a cent)
+make dev                     # backend + frontend together (scripts/dev.sh); Ctrl+C stops both
+make test                    # unit tests
 uvicorn seo_engine.api.app:app --reload --port 8420   # backend on :8420
 cd web && npm install && npm run dev      # frontend on :4280 (proxies /api)
 ```

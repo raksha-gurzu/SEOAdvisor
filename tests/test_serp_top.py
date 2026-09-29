@@ -6,7 +6,9 @@ class FakeSearch:
     def __init__(self, types: list[str]) -> None:
         self.types = types
 
-    def top(self, phrase: str, country: str, n: int) -> SerpResults:
+    def top(
+        self, phrase: str, country: str, n: int, stop_domains: frozenset[str] = frozenset()
+    ) -> SerpResults:
         items = [
             SerpItem(rank=i + 1, url=f"https://s{i}.com/", domain=f"s{i}.com", page_type=t)
             for i, t in enumerate(self.types[:n])

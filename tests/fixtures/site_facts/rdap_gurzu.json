@@ -1,0 +1,25 @@
+{
+ "objectClassName": "domain",
+ "ldhName": "GURZU.COM",
+ "events": [
+  {
+   "eventAction": "registration",
+   "eventDate": "2018-10-13T09:58:06Z"
+  },
+  {
+   "eventAction": "expiration",
+   "eventDate": "2027-10-13T09:58:06Z"
+  },
+  {
+   "eventAction": "last changed",
+   "eventDate": "2026-09-13T07:52:22Z"
+  },
+  {
+   "eventAction": "last update of RDAP database",
+   "eventDate": "2026-09-29T11:21:28Z"
+  }
+ ],
+ "status": [
+  "client transfer prohibited"
+ ]
+}
