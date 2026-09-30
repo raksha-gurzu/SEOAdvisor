@@ -29,6 +29,19 @@ export function competition(difficulty: number): { label: string; tone: Tone } {
   return { label: 'High competition', tone: 'bad' }
 }
 
+/** Intent as a chip: one vocabulary for every tool (the filter, the tables, the chips). */
+export const INTENT_CHIP: Record<string, { label: string; tone: string }> = {
+  commercial: { label: 'Commercial', tone: 'commercial' },
+  informational: { label: 'Informational', tone: 'info' },
+  transactional: { label: 'Transactional', tone: 'good' },
+  navigational: { label: 'Navigational', tone: '' },
+  unknown: { label: 'Unclear', tone: '' },
+}
+
+export function intentChip(intent: string): { label: string; tone: string } {
+  return INTENT_CHIP[intent] ?? INTENT_CHIP.unknown
+}
+
 export function intentText(intent: string): string {
   switch (intent) {
     case 'commercial': return 'People are comparing options'

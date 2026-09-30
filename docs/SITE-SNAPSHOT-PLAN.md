@@ -139,7 +139,7 @@ The page does not show: total organic traffic, total keyword count, a backlink l
 | `tools/site_snapshot.py` | Tiles, position groups, top pages, competitors. Pydantic models. |
 | `snapshot_pipeline.py` | The 6 steps, progress for the UI. |
 | `api/` | `/api/snapshots` endpoints and a store (the `JsonStore` from Keyword Gap). |
-| `web/` | Sidebar tool "Site snapshot", form, progress, results page. |
+| `web/` | Tool "Site snapshot" (a sidebar tool until 30 Sep 2026, then a tab in the top bar: `docs/UI-REDESIGN-PLAN.md`), form, progress, results page. |
 
 Every request to an address that a site or a downloaded list chooses (the site, its redirects, the RDAP servers from the IANA list) uses the public-address guard (`public_client`). The fixed vendor addresses (Open PageRank, CrUX, Majestic, Tranco) use a plain client. All numbers come from code (CLAUDE.md rule 1). Settings go in `SnapshotSettings` in `config.py` (rule 9).
 

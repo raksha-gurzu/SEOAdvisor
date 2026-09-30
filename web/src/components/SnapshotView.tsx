@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api'
-import { COUNTRY_NAMES, duration, relativeTime, usd } from '../format'
+import { COUNTRY_NAMES, duration, siteHost, usd } from '../format'
 import { go } from '../router'
 import type { SnapshotRecord } from '../types'
 import { RunProgress } from './RunProgress'
@@ -15,6 +15,51 @@ const STEP_TEXT: Record<string, string> = {
   summary: 'Building the snapshot',
 }
 const POLL_MS = 1500
+
+/** The site bar at the top of a report (docs/UI-REDESIGN-PLAN.md U1): take a new snapshot. */
+function SiteBar({ domain, country: initialCountry, keywords, onStarted }: { domain: string; country: string; keywords: number; onStarted: () => void }) {
+  const [site, setSite] = useState(domain)
+  const [country, setCountry] = useState(initialCountry)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const ok = !!siteHost(site)
+
+  async function start(e: FormEvent) {
+    e.preventDefault()
+    if (!ok) return
+    setBusy(true)
+    setError(null)
+    try {
+      const { id } = await api.startSnapshot(site.trim(), { country, keywords })
+      onStarted()
+      go({ page: 'snap', id })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="site-bar" onSubmit={start} aria-label="Take a snapshot">
+      <label className="site-bar-field">
+        <span className="field-label">Website</span>
+        <span className="site-bar-input">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          <input value={site} onChange={(e) => setSite(e.target.value)} inputMode="url" autoComplete="url" />
+        </span>
+      </label>
+      <label className="site-bar-field narrow">
+        <span className="field-label">Country</span>
+        <select className="select site-bar-select" value={country} onChange={(e) => setCountry(e.target.value)}>
+          {Object.entries(COUNTRY_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+        </select>
+      </label>
+      <button type="submit" className="btn primary" disabled={!ok || busy}>{busy ? 'Starting…' : 'Take snapshot'}</button>
+      {error && <span className="text-bad small site-bar-error">{error}</span>}
+    </form>
+  )
+}
 
 export function SnapshotView({ id, onChanged }: { id: string; onChanged: () => void }) {
   const [rec, setRec] = useState<SnapshotRecord | null>(null)
@@ -90,16 +135,20 @@ export function SnapshotView({ id, onChanged }: { id: string; onChanged: () => v
 
   return (
     <div className="page wide">
-      <header className="run-head">
+      <SiteBar domain={domain} country={country} keywords={run.settings.gap.keywords} onStarted={onChanged} />
+
+      <header className="report-head">
         <div>
-          <h1>{active ? `Reading ${domain}` : `Snapshot of ${domain}`}</h1>
-          <div className="run-meta">
-            <span>{relativeTime(rec.created_at)}</span>
+          <p className="eyebrow">Site snapshot</p>
+          <h1>{active ? `Reading ${domain}…` : domain}</h1>
+          <p className="report-meta">
+            <span>{new Date(rec.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             <span>{COUNTRY_NAMES[country] ?? country}</span>
+            {run.result && <span className="nums">{run.result.keywords_checked} searches checked</span>}
             {!active && <span>took {duration(started, ended)}</span>}
             {!active && <span className="nums">{run.credits_used} Serper credits</span>}
-            <span>{usd(run.cost_usd)} AI cost</span>
-          </div>
+            <span>{usd(run.cost_usd)} AI</span>
+          </p>
         </div>
         {!active && (
           <div className="run-actions">
@@ -111,11 +160,11 @@ export function SnapshotView({ id, onChanged }: { id: string; onChanged: () => v
               </span>
             ) : (
               <>
-                {rec.status === 'done' && (run.result?.keywords.length ?? 0) > 0 && (
-                  <a className="btn" href={`/api/snapshots/${id}/keywords.csv`} download>Download CSV</a>
-                )}
                 {rec.status === 'done' && (
-                  <button type="button" className="btn ghost" onClick={again} disabled={retrying}>{retrying ? 'Starting…' : 'Take again'}</button>
+                  <button type="button" className="btn" onClick={again} disabled={retrying}>{retrying ? 'Starting…' : 'Take again'}</button>
+                )}
+                {rec.status === 'done' && (run.result?.keywords.length ?? 0) > 0 && (
+                  <a className="btn" href={`/api/snapshots/${id}/keywords.csv`} download>Export CSV</a>
                 )}
                 <button type="button" className="btn ghost danger" onClick={() => setConfirming(true)}>Delete</button>
               </>
@@ -136,7 +185,7 @@ export function SnapshotView({ id, onChanged }: { id: string; onChanged: () => v
           retrying={retrying}
           onRetry={again}
           failedTitle="The snapshot stopped"
-          leaveNote="Usually takes about a minute. You can leave this page; the snapshot will appear in the sidebar when it’s ready."
+          leaveNote="Usually takes about a minute. You can leave this page; the snapshot will appear in Recent snapshots when it’s ready."
         />
       )}
 

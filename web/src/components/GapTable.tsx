@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
-import { bandText, bingText, CATEGORY_TEXT, fitText, intentText, safeHref } from '../format'
+import { bandText, bingText, CATEGORY_TEXT, fitText, INTENT_CHIP, intentChip, intentText, safeHref } from '../format'
 import type { GapCategory, GapRow, KeywordRanking, KeywordGapResult } from '../types'
 import { DomainDot, Pill } from './ui'
+
 
 export type TabId = GapCategory | 'all' | 'none'
 type SortKey = 'keyword' | 'searches' | 'difficulty' | 'fit' | 'lift' | 'proof' | `pos:${number}`
@@ -125,17 +126,19 @@ export function GapTable({
     <section className="card" id="keyword-table">
       <div className="card-body">
         <div className="table-top">
-          <h2 className="section-title">All keywords checked</h2>
+          <div>
+            <h2 className="section-title">All keywords checked</h2>
+            <p className="muted small">Positions from one Google check · click a keyword for the results Google showed</p>
+          </div>
           <span className="muted small nums">{rows.length} shown</span>
         </div>
 
-        <div className="tabs scroll-x" role="tablist" aria-label="Keyword groups">
+        <div className="tabs scroll-x" role="group" aria-label="Keyword groups">
           {TABS.map((t) => (
             <button
               key={t}
               type="button"
-              role="tab"
-              aria-selected={tab === t}
+              aria-pressed={tab === t}
               title={t in CATEGORY_TEXT ? CATEGORY_TEXT[t].rule : t === 'none' ? 'None of the sites is on the first pages checked' : 'Keywords where at least one site ranks'}
               id={`gap-tab-${t}`}
               onClick={() => onTab(t)}
@@ -160,10 +163,7 @@ export function GapTable({
           </select>
           <select className="select" aria-label="Intent" value={filters.intent} onChange={(e) => update({ intent: e.target.value })}>
             <option value="">Intent: any</option>
-            <option value="commercial">Comparing options</option>
-            <option value="informational">Learning</option>
-            <option value="transactional">Ready to act</option>
-            <option value="unknown">Unclear</option>
+            {Object.entries(INTENT_CHIP).map(([value, i]) => <option key={value} value={value}>{i.label}</option>)}
           </select>
           <select className="select" aria-label="Difficulty" value={filters.band} onChange={(e) => update({ band: e.target.value })}>
             <option value="">Difficulty: any</option>
@@ -208,7 +208,8 @@ export function GapTable({
                           <span className="kw">{row.keyword}</span>
                         </button>
                         <div className="kw-meta">
-                          {row.categories.map((c) => <span key={c} className="tag">{CATEGORY_TEXT[c].label}</span>)}
+                          {row.categories.map((c) => <span key={c} className="chip">{CATEGORY_TEXT[c].label}</span>)}
+                          <span className={`chip ${intentChip(row.intent).tone}`}>{intentChip(row.intent).label}</span>
                           {row.cluster !== row.keyword && <span className="muted small">group: {row.cluster}</span>}
                         </div>
                       </td>
@@ -232,7 +233,7 @@ export function GapTable({
                       <td className="num">
                         <span className={row.bing_status === 'measured' ? '' : 'muted small'}>{bingText(row)}</span>
                       </td>
-                      <td>{row.difficulty_band ? <Pill tone={band.tone}>{band.label}</Pill> : <span className="muted small">Unknown</span>}</td>
+                      <td>{row.difficulty_band && row.difficulty !== null ? <span className={`chip ${band.tone}`}><span className="nums">{row.difficulty}</span> {band.label}</span> : <span className="muted small">Unknown</span>}</td>
                       <td className="small">{fitText(row.business_fit)}</td>
                       <td className="num">{row.traffic_lift ? `+${row.traffic_lift.toLocaleString()}` : <span className="muted">—</span>}</td>
                     </tr>

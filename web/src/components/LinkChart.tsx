@@ -78,13 +78,15 @@ export function LinkChart({ history, title }: { history: Point[]; title: string 
         <span>{monthYear(history[0].month)}</span>
         <span>{monthYear(history[history.length - 1].month)}</span>
       </div>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>{title}</caption>
         <thead><tr><th>Month</th><th>Score</th></tr></thead>
         <tbody>
           {history.map((p) => <tr key={p.month}><td>{monthYear(p.month)}</td><td>{p.score}{p.estimated ? ' (estimated)' : ''}</td></tr>)}
         </tbody>
-      </table>
+        </table>
+      </div>
     </figure>
   )
 }

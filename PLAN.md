@@ -102,6 +102,17 @@ Plan, research and owner decisions: `docs/SITE-SNAPSHOT-PLAN.md`.
 - [ ] Owner: hand check of 3 positions and the site age (list in `docs/SITE-SNAPSHOT-PLAN.md`, Step 6)
   - Status: live gurzu.com vs 4 competitors: 99 s, 120 credits, $0.011; 2 keywords to add, 57 of 60 keywords with no site on pages 1-2 (G13). Guide chapter 20 done (checker: All good). Waiting: owner's hand check of 5 positions
 
+## Web app: UI redesign "Clearview" (branch `feature/keyword-gap`)
+
+Plan, research and owner decisions: `docs/UI-REDESIGN-PLAN.md`.
+
+- [x] Step 0: tokens (light and dark), top bar with tool tabs, history tables on the start pages
+- [x] Step 1: Site Snapshot in the new design
+- [x] Step 2: Keyword Gap in the new design
+- [x] Step 3: Briefs in the new design
+- [x] Step 4: QA pass, keyboard and contrast checks, code review (15 problems fixed), guide chapter 22
+- [ ] Owner: look through the app (`make dev`) and commit when happy
+
 ## Phase 2: One-agent prototype (weeks 3 to 4)
 
 - [ ] `agent/`: one agent with the 5 consolidated tools and clear instructions; outputs a `Brief`

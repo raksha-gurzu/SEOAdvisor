@@ -92,6 +92,7 @@ sections it affects.
 | --- | --- | --- | --- |
 | [Chapter 20: Update 2026-09-29: Keyword Gap](#chapter-20-update-2026-09-29-keyword-gap) | 29 Sep 2026 | not committed yet (branch `feature/keyword-gap`, on top of `79b46a0`) | Keyword Gap: compare your site with up to 4 competitors; fixes to robots.txt, Bing, Google paging and caching |
 | [Chapter 21: Update 2026-09-29: Site Snapshot](#chapter-21-update-2026-09-29-site-snapshot) | 29 Sep 2026 | not committed yet (branch `feature/keyword-gap`) | Site Snapshot: one page about one website from free sources; list pages skipped; shared robots.txt rules; Tranco and Majestic exact lookups |
+| [Chapter 22: Update 2026-09-30: The "Clearview" redesign](#chapter-22-update-2026-09-30-the-clearview-redesign) | 30 Sep 2026 | not committed yet (branch `feature/keyword-gap`) | The web app redesigned like a professional SEO tool: top bar, one page pattern, one intent vocabulary; browser, QA and review fixes |
 
 ## Exercises
 
@@ -457,7 +458,7 @@ competitors do.
 
 - **Who fills it:** code only (chapter 12 explains the formula).
 - **In the web app:** the ring in the summary card, labelled "Strong" (70+), "Getting there"
-  (40 to 69) or "Needs work" (under 40) (`web/src/format.ts:48-52`).
+  (40 to 69) or "Needs work" (under 40) (`web/src/format.ts:61-65`).
 
 ### `checklist`: pass or fail rules
 
@@ -543,7 +544,7 @@ Two project rules shape this (both in `CLAUDE.md`):
 
 The brief is honest about which evidence it used: a free-mode phrase says either "90 Bing
 impressions/mo" or "in Google autocomplete", and the web app turns those into "About 90
-searches a month (Bing)" or "People search this on Google" (`web/src/format.ts:42-46`).
+searches a month (Bing)" or "People search this on Google" (`web/src/format.ts:55-59`).
 
 > [!WARNING]
 > Bing impressions are not Google searches. They are good for comparing phrases with each
@@ -2347,7 +2348,7 @@ What each part is for:
 ### The watcher: polling from the browser
 
 `RunView.tsx` asks for the record every 1.5 seconds while the run is active
-(`web/src/components/RunView.tsx:24` and `:33-49`):
+(`web/src/components/RunView.tsx:25` and `:33-49`):
 
 ```tsx
 const load = async () => {
@@ -12488,6 +12489,8 @@ polling effect would stop and restart after every redraw of `App`.
 
 ### The component tree
 
+> [!IMPORTANT] Changed on 2026-09-30: `App` now draws a top bar, not a sidebar, and each start page shows a `RecentRuns` table. See 22.2.
+
 ```mermaid
 flowchart TD
   main["main.tsx"] --> App["App.tsx<br/>sidebar, history, setup status, theme"]
@@ -12625,6 +12628,8 @@ Two deliberate differences: `CompetitorPage` has no `text` field, because the AP
 
 ## 16.6 `App.tsx`: the frame around everything
 
+> [!IMPORTANT] Changed on 2026-09-30: the sidebar is now a top bar, and the history is a table on each start page. See 22.2.
+
 `App` draws the left sidebar and picks the main screen.
 
 - **New brief button** calls `go({ page: 'new' })`.
@@ -12686,6 +12691,8 @@ quick feedback.
 the history) and `go({ page: 'run', id })`, which switches to the run screen.
 
 ## 16.8 `RunView.tsx`: watching a run
+
+> [!IMPORTANT] Changed on 2026-09-30: the page has the shared report header and progress card. See 22.3.
 
 ### Polling every 1.5 seconds
 
@@ -13836,28 +13843,29 @@ stable phrase and competitor choice; verifying the draft in code.
 | `.gitignore` | 24 | keeps `node_modules/` and `dist/` out of git | 16 |
 | `public/favicon.svg` | 1 | the app icon | 16 |
 | `src/main.tsx` | 10 | draws `App` into the page | 16 |
-| `src/App.tsx` | 192 | sidebar, history, setup status, theme; picks the screen | 16 |
+| `src/App.tsx` | 196 | top bar (tool tabs, key-status menu, theme), picks the screen, history tables | 16, 22 |
 | `src/router.ts` | 64 | tiny hash router | 16 |
 | `src/api.ts` | 61 | one function per API endpoint; readable errors | 16 |
 | `src/types.ts` | 502 | TypeScript copies of the Pydantic models | 16 |
-| `src/format.ts` | 224 | plain-language labels, Markdown export | 16 |
+| `src/format.ts` | 237 | plain-language labels, Markdown export | 16 |
 | `src/theme.ts` | 25 | Light, Dark, Auto | 16 |
 | `src/example.ts` | 21 | the "Try an example" page text | 16 |
-| `src/index.css` | 562 | all styles; colour tokens; dark mode | 16 |
+| `src/index.css` | 640 | all styles; colour tokens; dark mode | 16 |
 | `src/components/NewRun.tsx` | 245 | the Create an SEO brief form | 16 |
-| `src/components/RunView.tsx` | 185 | progress polling, then the tabs | 16 |
+| `src/components/RunView.tsx` | 204 | progress polling, then the tabs | 16 |
 | `src/components/Brief.tsx` | 303 | the Action plan, snippet preview, draft | 16 |
 | `src/components/Details.tsx` | 129 | the Details tab | 16 |
 | `src/components/ui.tsx` | 69 | `Pill`, `CopyButton`, `Disclosure`, `Alert`, icons | 16 |
 | `src/components/NewGap.tsx` | 225 | the Keyword gap form: your site, up to 4 competitors, options | 20 |
 | `src/components/NewSnapshot.tsx` | 140 | Site Snapshot form | 21 |
-| `src/components/SnapshotView.tsx` | 146 | Site Snapshot page: polling, header, progress | 21 |
-| `src/components/SnapshotResults.tsx` | 378 | Site Snapshot results: tiles, bars, table, checks, method | 21 |
-| `src/components/LinkChart.tsx` | 90 | link score over time: one-series line chart | 21 |
+| `src/components/SnapshotView.tsx` | 195 | Site Snapshot page: polling, header, progress | 21 |
+| `src/components/SnapshotResults.tsx` | 504 | Site Snapshot results: tiles, bars, table, checks, method | 21 |
+| `src/components/LinkChart.tsx` | 92 | link score over time: one-series line chart | 21 |
 | `src/components/RunProgress.tsx` | 70 | progress card shared by Keyword Gap and Site Snapshot | 21 |
-| `src/components/GapView.tsx` | 142 | Keyword gap progress, then the dashboard | 20 |
-| `src/components/GapResults.tsx` | 218 | site cards, overlap bars, keywords to add, panels, method note | 20 |
-| `src/components/GapTable.tsx` | 336 | the keyword table: tabs, sorting, filters, Google results per row | 20 |
+| `src/components/RecentRuns.tsx` | 80 | a tool's run history, on its start page | 22 |
+| `src/components/GapView.tsx` | 159 | Keyword gap progress, then the dashboard | 20 |
+| `src/components/GapResults.tsx` | 220 | site cards, overlap bars, keywords to add, panels, method note | 20 |
+| `src/components/GapTable.tsx` | 337 | the keyword table: tabs, sorting, filters, Google results per row | 20 |
 
 ### This guide and its exercises: `docs/`
 
@@ -14181,7 +14189,7 @@ embeddings  = (characters / 4) × 0.15 / 1,000,000  USD   (an estimate; logged e
 | Must-cover and worth-covering cut-offs | `must_cover_share`, `worth_covering_share`, `config.py:83-84` | gap rule uses `worth_covering_share` too |
 | Which big sites are dropped as competitors | `Thresholds.authority_domains`, `config.py:62-73` | |
 | How many runs can go at once | `max_parallel_runs` in `create_app`, `api/app.py:114` | |
-| The polling interval | `POLL_MS`, `web/src/components/RunView.tsx:24` | |
+| The polling interval | `POLL_MS`, `web/src/components/RunView.tsx:25` | |
 | Countries offered | `COUNTRIES` in `api/app.py:26` | `LOCATION_CODES` in `providers/dataforseo.py:12`, `COUNTRIES` in `report.py:20`, `COUNTRY_NAMES` in `web/src/format.ts:5` |
 | Plain-language wording | `web/src/format.ts` | the same wording in `report.py` |
 | Add a new data provider | a new file in `providers/` with the same methods as the `Protocol` (`SearchProvider`, `KeywordProvider`, `PageFetcher`, `LLMProvider`, `EmbeddingProvider`); take a `DailyCache` and a cost sink; wire it in `deps.py:from_env` | a respx test in `tests/`, a check in `scripts/check_live.py`, a key in `.env.example`, `Secrets` in `config.py` |
@@ -14455,6 +14463,8 @@ Three design points:
 
 ## 20.10 The web app
 
+> [!IMPORTANT] Changed on 2026-09-30: the tool switch is now a top bar, and the result pages follow one pattern. See 22.2 and 22.3.
+
 The sidebar has a tool switch at the top ("Briefs" / "Keyword gap"); the tool follows the
 address (`toolOf`, `web/src/router.ts:33-37`): `#/gap` is the form, `#/gaps/<id>` an analysis.
 
@@ -14465,13 +14475,13 @@ address (`toolOf`, `web/src/router.ts:33-37`): `#/gap` is the form, `#/gaps/<id>
 - `GapResults.tsx`: site cards, the overlap bars (click a bar to filter the table), the top
   keywords to add, competitor panels and "How we calculate this".
 - `GapTable.tsx`: tabs per category, sorting, filters (`passes`,
-  `web/src/components/GapTable.tsx:47-62`), 25 rows a page, and rows that open to show the 20
+  `web/src/components/GapTable.tsx:48-63`), 25 rows a page, and rows that open to show the 20
   Google results.
 
-The five site colours (`web/src/index.css:36-40`) are the first five of a tested categorical
+The five site colours (`web/src/index.css:41-45`) are the first five of a tested categorical
 palette, checked with a colour-blindness validator on this app's light and dark backgrounds.
 Three of them are faint on white, so a colour is never shown without the site's name. Links
-from Google results pass through `safeHref` (`web/src/format.ts:155-157`): only `http` and
+from Google results pass through `safeHref` (`web/src/format.ts:168-170`): only `http` and
 `https` addresses become links, so a `javascript:` URL in a result cannot run.
 
 ## 20.11 Live results and known limits
@@ -14970,6 +14980,8 @@ twice.
 
 ## 21.8 API, CSV and the web page
 
+> [!IMPORTANT] Changed on 2026-09-30: the page now has a site bar, six tiles, period buttons on the chart and a table in pages of 10. See 22.3.
+
 The API adds `/api/snapshots` (defaults, start, list, get, `keywords.csv`, delete) and a
 `SnapshotStore` in `runs/snapshots/`; the start endpoint checks the address with the same
 public-address guard as Keyword Gap (`src/seo_engine/api/app.py:465-482`).
@@ -14979,7 +14991,7 @@ The page (`SnapshotResults.tsx`) shows seven tiles, the link score chart, the po
 filterable table of searches, top pages, competitors with a "Compare in Keyword Gap" button,
 the technical checks, and "How we calculate this" with the attributions the licences require.
 
-`LinkChart` (`web/src/components/LinkChart.tsx:17-90`) follows the data
+`LinkChart` (`web/src/components/LinkChart.tsx:17-92`) follows the data
 visualisation rules: one series, so no legend; a 2 px line in the brand colour; hover, touch
 and arrow keys move a crosshair; the values are read out to screen readers; and a hidden table
 lists every point.
@@ -15201,6 +15213,114 @@ def ex21_site_checks_by_hand() -> None:
 6. Why does the snapshot ask Majestic and Tranco for the exact domain?
    <details><summary>Answer</summary>Otherwise a subdomain such as alice.github.io would show
    github.io's numbers, which describe a different, much bigger site.</details>
+
+# Chapter 22: Update 2026-09-30: The "Clearview" redesign
+
+> **What you'll learn:** how the web app changed to look and work like a professional SEO tool:
+> the research behind it, the locked design, the new frame (a top bar instead of the sidebar),
+> the page pattern every tool now shares, and what the checks found and fixed.
+>
+> **Files:** `web/src/App.tsx`, `index.css`, two new components (`RecentRuns.tsx`,
+> `RunProgress.tsx`), and the result pages of all three tools.
+>
+> **Before this:** chapter 16 (the web app) and chapter 21 (Site Snapshot).
+
+**Commit range:** none yet (branch `feature/keyword-gap`, not committed). The research, the four
+directions shown to the owner, the decisions and the checks are in `docs/UI-REDESIGN-PLAN.md`.
+
+## 22.1 Why and how the design was chosen
+
+The owner wanted the app to feel like Semrush or Ahrefs. The research read Semrush's public
+design system (Intergalactic) and the help centers of Semrush, Ahrefs, Mangools and SISTRIX, and
+found one page order all these tools share: tool navigation, a target bar (site, country, run),
+a report header (title, facts, export at the top right), 3 to 6 summary numbers, charts, then
+dense tables. Four original directions were drawn on a design canvas with the same real
+gurzu.com data; the owner locked **D · Clearview** (white top bar with pill tabs, teal, Plus
+Jakarta Sans, rounded cards) with light and dark themes. No vendor branding or screen was copied.
+
+## 22.2 The frame: a top bar instead of the sidebar
+
+`App` (`web/src/App.tsx:50-196`) now draws a sticky top bar: the logo,
+the three tools as pill tabs, a key-status menu and the theme switch. The run history moved to a
+table under each tool's form, `RecentRuns` (`web/src/components/RecentRuns.tsx:24-80`),
+an owner decision.
+
+The key-status menu is a `<details>` element. A `<details>` does not close by itself when you
+click elsewhere, so `App` closes it on an outside click, on Escape (focus goes back to its
+button) and when the page changes. The browser check found this: the open menu covered the
+"Take again" button.
+
+> [!NOTE]
+> A tool tab has `aria-current="page"` only on that tool's start page. On a report it has
+> `aria-current="true"`: the tab is the current section, but it links to the start page, not to
+> the report you are reading.
+
+## 22.3 One page pattern for all three tools
+
+Every result page now has the same parts, top to bottom:
+
+1. **A site bar or comparison bar.** Site Snapshot: the site and a country menu, to take a new
+   snapshot (`SiteBar`, `web/src/components/SnapshotView.tsx:20-62`). Keyword Gap:
+   every site with its color dot and "Edit comparison".
+2. **A report header:** a small eyebrow with the tool name, the site as the title, one line of
+   facts (date, country, searches, time, credits, AI cost) and the actions at the top right.
+3. **Metric tiles** (`.kpi` in `index.css`): a label, one large number with its unit, one line
+   of context. Missing data is a word ("Not set up", "Not in top 1M"), never a zero.
+4. **Charts and panels**, then **tables** with a filter above them, chips for intent and
+   difficulty, and pages of 10 rows.
+
+The progress card is one component for Keyword Gap, Site Snapshot and Briefs, `RunProgress`
+(`web/src/components/RunProgress.tsx:12-70`).
+
+## 22.4 One vocabulary for intent and difficulty
+
+`INTENT_CHIP` (`web/src/format.ts:33-39`) gives every intent one word and
+one color: Commercial, Informational, Transactional, Navigational and Unclear. The Keyword Gap
+filter, the Keyword Gap table and the Site Snapshot table all use it. Before, the filter said
+"Comparing options" while a chip said "Commercial" for the same thing. Difficulty chips always
+show the number and the band ("28 Low"), as the research found in every SEO tool.
+
+## 22.5 What the checks found
+
+The work was checked in a real browser at every step (light and dark, 1440, 1024 and 390 px),
+then by an automated QA pass over 9 screens and every flow, a contrast check of every new color
+pair (all at least 5.06:1), and an independent code review. The most useful findings:
+
+- **A hidden table made pages 1,700 px too tall.** The chart's screen-reader table had the
+  `sr-only` class, but a `<table>` ignores the 1 px size that hides other elements. It is now
+  inside a hidden `<div>` (`web/src/components/LinkChart.tsx:17-92`).
+- **A later CSS rule overrode an earlier one.** The brief's wide "Main search" tile lost to the
+  general `.kpi-row` rule written after it, and the phrase broke mid-word. The rule is now more
+  specific (`.kpi-row.brief-kpis`).
+- **The speed list would have broken with a Chrome key.** A general `.check-list li` rule also
+  styled the nested speed rows. It is now `.check-list > li`, and a QA fixture with speed data
+  proves the rows.
+- **Small text was 11.25 px** (0.75 rem on a 15 px root); it is now 12 px.
+- **Focus under the sticky bar.** `scroll-padding-top` keeps a focused control clear of the top
+  bar.
+
+## Recap
+
+- The design came from research on real SEO tools, and the owner chose it from four originals.
+- A top bar replaced the sidebar; each tool's history is a table on its start page.
+- Every tool page has the same order: site bar, report header, tiles, charts, tables.
+- Intent and difficulty use one vocabulary and always show words or numbers, not color alone.
+- Browser checks, a QA pass and a code review found layout, CSS-order and accessibility bugs;
+  all were fixed.
+
+## Check yourself
+
+1. Why is the chart's hidden table wrapped in a `<div class="sr-only">` instead of having the
+   class itself?
+   <details><summary>Answer</summary>A table box ignores the width and height limits that hide
+   other elements, so a long table made the page taller. A `<div>` respects them.</details>
+2. Why does the key-status menu need code to close, when it is a plain `<details>` element?
+   <details><summary>Answer</summary>A `<details>` stays open until its own button is clicked
+   again. Left open, it covered page content, so the app closes it on an outside click, on Escape
+   and on a page change.</details>
+3. Where do you change the word shown for "commercial" intent, and what changes with it?
+   <details><summary>Answer</summary>In `INTENT_CHIP` in `format.ts`. The Keyword Gap filter,
+   the Keyword Gap table and the Site Snapshot table all follow.</details>
 
 # Appendix: how this guide grows
 

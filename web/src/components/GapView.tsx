@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { COUNTRY_NAMES, duration, relativeTime, usd } from '../format'
+import { COUNTRY_NAMES, duration, usd } from '../format'
 import { go } from '../router'
 import type { GapRecord } from '../types'
 import { GapResults } from './GapResults'
 import { RunProgress } from './RunProgress'
-import { Alert } from './ui'
+import { Alert, DomainDot } from './ui'
 
 const STEP_TEXT: Record<string, string> = {
   sites: 'Reading the websites',
@@ -90,17 +90,31 @@ export function GapView({ id, onChanged }: { id: string; onChanged: () => void }
 
   return (
     <div className="page wide">
-      <header className="run-head">
+      <div className="compare-bar" role="group" aria-label="Sites compared">
+        <span className="field-label">Comparing</span>
+        <ul className="compare-sites">
+          {(run.domains.length ? run.domains : [run.site, ...run.competitors]).map((d, i) => (
+            <li key={d}><DomainDot index={i} /><span>{d}</span>{i === 0 && <span className="chip brand">You</span>}</li>
+          ))}
+        </ul>
+        <button type="button" className="btn ghost" onClick={() => go({ page: 'gap-new', site: run.site, competitors: run.competitors })}>
+          Edit comparison
+        </button>
+      </div>
+
+      <header className="report-head">
         <div>
-          <h1>{active ? `Comparing ${ours}` : `Keyword gap for ${ours}`}</h1>
-          <div className="run-meta">
+          <p className="eyebrow">Keyword gap</p>
+          <h1>{active ? `Comparing ${ours}…` : ours}</h1>
+          <p className="report-meta">
             <span>vs {n} competitor{n === 1 ? '' : 's'}</span>
-            <span>{relativeTime(rec.created_at)}</span>
+            <span>{new Date(rec.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             <span>{COUNTRY_NAMES[run.settings.base.country] ?? run.settings.base.country}</span>
+            {run.result && <span className="nums">{run.result.rows.length} keywords checked</span>}
             {!active && <span>took {duration(started, ended)}</span>}
             {!active && <span className="nums">{run.credits_used} Serper credits</span>}
-            <span>{usd(run.cost_usd)} AI cost</span>
-          </div>
+            <span>{usd(run.cost_usd)} AI</span>
+          </p>
         </div>
         {!active && (
           <div className="run-actions">
@@ -112,7 +126,10 @@ export function GapView({ id, onChanged }: { id: string; onChanged: () => void }
               </span>
             ) : (
               <>
-                {rec.status === 'done' && <a className="btn" href={`/api/gaps/${id}/keywords.csv`} download>Download CSV</a>}
+                {rec.status === 'done' && (
+                  <button type="button" className="btn" onClick={retry} disabled={retrying}>{retrying ? 'Starting…' : 'Take again'}</button>
+                )}
+                {rec.status === 'done' && <a className="btn" href={`/api/gaps/${id}/keywords.csv`} download>Export CSV</a>}
                 <button type="button" className="btn ghost danger" onClick={() => setConfirming(true)}>Delete</button>
               </>
             )}
@@ -132,7 +149,7 @@ export function GapView({ id, onChanged }: { id: string; onChanged: () => void }
           retrying={retrying}
           onRetry={retry}
           failedTitle="The analysis stopped"
-          leaveNote="Usually takes 1 to 3 minutes. You can leave this page; the analysis will appear in the sidebar when it’s ready."
+          leaveNote="Usually takes 1 to 3 minutes. You can leave this page; the analysis will appear in Recent analyses when it’s ready."
         />
       )}
 

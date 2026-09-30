@@ -3,7 +3,7 @@ import { bandText, CATEGORY_TEXT, fitText, safeHref } from '../format'
 import { go } from '../router'
 import type { GapCategory, GapRun, KeywordGapResult } from '../types'
 import { GapTable, type TabId } from './GapTable'
-import { Disclosure, DomainDot, Pill } from './ui'
+import { Disclosure, DomainDot } from './ui'
 
 const OVERLAP: GapCategory[] = ['missing', 'weak', 'untapped', 'strong', 'shared', 'unique']
 
@@ -23,7 +23,7 @@ export function GapResults({ run, result }: { run: GapRun; result: KeywordGapRes
 
   return (
     <>
-      <div className="site-cards">
+      <div className="site-tiles">
         {domains.map((d, i) => {
           const found = result.rows.filter((r) => r.positions[d] !== null)
           const page1 = found.filter((r) => (r.positions[d] ?? 99) <= 10).length
@@ -32,96 +32,98 @@ export function GapResults({ run, result }: { run: GapRun; result: KeywordGapRes
           // numbers only for keywords this site isn't found for (plan D11).
           const known = visits > 0
           return (
-            <section key={d} className={`card site-card ${i === 0 ? 'you' : ''}`}>
-              <div className="site-name"><DomainDot index={i} /><span>{d}</span>{i === 0 && <Pill tone="brand">You</Pill>}</div>
-              <dl className="stats">
-                <div><dt>On page 1</dt><dd className="nums">{page1}</dd></div>
-                {pagesChecked > 1 && <div><dt>On pages 1–{pagesChecked}</dt><dd className="nums">{found.length}</dd></div>}
-                <div>
-                  <dt>Visits a month</dt>
-                  <dd className="nums" title={known ? 'Rough estimate from Bing numbers' : 'Not enough data: Bing has no numbers for the keywords this site is found for'}>
-                    {known ? `~${visits.toLocaleString()}` : '—'}
-                  </dd>
-                </div>
-              </dl>
-              <span className="muted small">{pagesRead[d] ?? 0} pages read</span>
+            <section key={d} className={`card kpi site-kpi ${i === 0 ? 'you' : ''}`}>
+              <h2 className="site-name"><DomainDot index={i} /><span className="site-domain">{d}</span>{i === 0 && <span className="chip brand">You</span>}</h2>
+              <div className="kpi-value">
+                <span className="nums">{found.length}</span><span className="kpi-of"> / {result.rows.length}</span>
+              </div>
+              <div className="kpi-sub">on the first {pagesChecked} page{pagesChecked === 1 ? '' : 's'} of Google</div>
+              <div className="kpi-sub kpi-facts">
+                <span><span className="nums">{page1}</span> on page 1</span>
+                <span title={known ? 'Rough estimate from Bing numbers' : 'Not enough data: Bing has no numbers for the keywords this site is found for'}>
+                  visits <span className="nums">{known ? `~${visits.toLocaleString()}/mo` : '—'}</span>
+                </span>
+                <span><span className="nums">{pagesRead[d] ?? 0}</span> pages read</span>
+              </div>
             </section>
           )
         })}
       </div>
 
+      <div className="snap-grid-2">
       <section className="card">
-        <div className="card-body">
-          <div>
-            <h2 className="section-title">How your keywords compare</h2>
-            <p className="muted small">Out of {result.rows.length} keywords checked on Google. Groups overlap, as in Semrush: every Missing keyword is also Untapped. Click a bar to see its keywords.</p>
+          <div className="card-body">
+            <div>
+              <h2 className="section-title">Top keywords to add</h2>
+              <p className="muted small">
+                Keywords your competitors show up for and you don’t (or rank lower). Ordered by how well they fit your business, then by how
+                high competitors rank for them, then by how easy the results look.
+              </p>
+            </div>
+            {result.top.length === 0 ? (
+              <p className="muted">No keyword to add fits your business well enough. Try competitors that sell what you sell.</p>
+            ) : (
+              <ol className="opportunities">
+                {result.top.map((o, i) => {
+                  const band = bandText(o.difficulty_band)
+                  const href = safeHref(o.best_url)
+                  return (
+                    <li key={o.keyword} className="opportunity">
+                      <span className="opp-num nums">{i + 1}</span>
+                      <div className="opp-body">
+                        <div className="opp-top">
+                          <strong className="opp-kw">{o.keyword}</strong>
+                          <span className="chip">{CATEGORY_TEXT[o.category].label}</span>
+                          <span className="chip brand">{fitText(o.business_fit)}</span>
+                          {o.difficulty_band && <span className={`chip ${band.tone}`}>{o.difficulty !== null && <span className="nums">{o.difficulty}</span>} {band.label} difficulty</span>}
+                          {!!o.traffic_lift && <span className="chip good">+{o.traffic_lift.toLocaleString()} visits/mo</span>}
+                        </div>
+                        <p className="small">{o.reason}</p>
+                        {href && (
+                          <a className="small url" href={href} target="_blank" rel="noopener noreferrer">
+                            See {o.best_competitor}’s page (#{o.best_position})
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
           </div>
-          <ul className="overlap-bars">
-            {OVERLAP.map((c) => (
-              <li key={c}>
-                <button type="button" className="overlap-row" onClick={() => showTab(c)} title={CATEGORY_TEXT[c].rule}>
-                  <span className="overlap-label">
-                    <strong>{CATEGORY_TEXT[c].label}</strong>
-                    <span className="muted small">{CATEGORY_TEXT[c].rule}</span>
-                  </span>
-                  <span className="overlap-track">
-                    <span className="overlap-bar" style={{ width: `${(result.counts[c] / maxCount) * 100}%` }} />
-                    <span className="overlap-value nums">{result.counts[c]}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {result.unranked.length > 0 && (
-            <p className="muted small">
-              {result.unranked.length} more keyword{result.unranked.length === 1 ? '' : 's'} had none of the sites on the first {Math.ceil(run.settings.depth / 10)} page{run.settings.depth > 10 ? 's' : ''}.{' '}
-              <button type="button" className="link" onClick={() => showTab('none')}>Show them</button>
-            </p>
-          )}
-        </div>
-      </section>
+        </section>
 
       <section className="card">
-        <div className="card-body">
-          <div>
-            <h2 className="section-title">Top keywords to add</h2>
-            <p className="muted small">
-              Keywords your competitors show up for and you don’t (or rank lower). Ordered by how well they fit your business, then by how
-              high competitors rank for them, then by how easy the results look.
-            </p>
+          <div className="card-body">
+            <div>
+              <h2 className="section-title">How your keywords compare</h2>
+              <p className="muted small">Out of {result.rows.length} keywords checked on Google. Groups overlap, as in Semrush: every Missing keyword is also Untapped. Click a bar to see its keywords.</p>
+            </div>
+            <ul className="overlap-bars">
+              {OVERLAP.map((c) => (
+                <li key={c}>
+                  <button type="button" className="overlap-row" onClick={() => showTab(c)} title={CATEGORY_TEXT[c].rule}>
+                    <span className="overlap-label">
+                      <strong>{CATEGORY_TEXT[c].label}</strong>
+                      <span className="muted small">{CATEGORY_TEXT[c].rule}</span>
+                    </span>
+                    <span className="overlap-track">
+                      <span className="overlap-bar" style={{ width: `${(result.counts[c] / maxCount) * 100}%` }} />
+                      <span className="overlap-value nums">{result.counts[c]}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {result.unranked.length > 0 && (
+              <p className="muted small">
+                {result.unranked.length} more keyword{result.unranked.length === 1 ? '' : 's'} had none of the sites on the first {Math.ceil(run.settings.depth / 10)} page{run.settings.depth > 10 ? 's' : ''}.{' '}
+                <button type="button" className="link" onClick={() => showTab('none')}>Show them</button>
+              </p>
+            )}
           </div>
-          {result.top.length === 0 ? (
-            <p className="muted">No keyword to add fits your business well enough. Try competitors that sell what you sell.</p>
-          ) : (
-            <ol className="opportunities">
-              {result.top.map((o, i) => {
-                const band = bandText(o.difficulty_band)
-                const href = safeHref(o.best_url)
-                return (
-                  <li key={o.keyword} className="opportunity">
-                    <span className="opp-num nums">{i + 1}</span>
-                    <div className="opp-body">
-                      <div className="opp-top">
-                        <strong className="opp-kw">{o.keyword}</strong>
-                        <Pill>{CATEGORY_TEXT[o.category].label}</Pill>
-                        <Pill tone="brand">{fitText(o.business_fit)}</Pill>
-                        {o.difficulty_band && <Pill tone={band.tone}>{band.label} difficulty</Pill>}
-                        {!!o.traffic_lift && <Pill tone="good">+{o.traffic_lift.toLocaleString()} visits/mo</Pill>}
-                      </div>
-                      <p className="small">{o.reason}</p>
-                      {href && (
-                        <a className="small url" href={href} target="_blank" rel="noopener noreferrer">
-                          See {o.best_competitor}’s page (#{o.best_position})
-                        </a>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ol>
-          )}
-        </div>
-      </section>
+        </section>
+      </div>
 
       <GapTable result={result} rankings={run.ranks?.rankings ?? []} tab={tab} onTab={setTab} />
 
