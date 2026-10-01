@@ -1,6 +1,6 @@
 # PRD: SEO and AI Search Optimization Engine
 
-Status: problem definition agreed; implementation starting. Last updated: 24 September 2026.
+Status: problem definition agreed; implementation starting. Last updated: 28 September 2026 (Keyword Gap added, §5.11).
 
 ## 1. Summary
 
@@ -23,6 +23,7 @@ Today the team researches every page by hand: guessing search phrases, reading c
 | Content-only (default) | The pasted text of one page. No URL, no site name, no search phrase. | In scope now |
 | URL import | A page URL; the engine fetches the readable text into the text box for the user to review, then runs as content-only | In the web UI (24 Sep 2026) |
 | Search Console | The page's real Google queries and positions from Search Console, replacing phrase guessing | Proposed; needs CEO approval |
+| Keyword Gap | Our domain plus 1 to 4 competitor domains (§5.11) | In progress on `feature/keyword-gap` |
 
 ## 5. Outputs (the brief)
 
@@ -38,6 +39,28 @@ Today the team researches every page by hand: guessing search phrases, reading c
 10. **Readable report:** the brief and draft download as a Word document (.docx), laid out like the action plan.
 
 **Not an output:** a published or silently changed page. The draft is a suggestion the team edits.
+
+### 5.11 Keyword Gap (added 28 Sep 2026)
+
+A second, separate feature. The user enters our domain and 1 to 4 competitor domains. The engine reads each site's sitemap, finds the keywords the sites target, checks their Google positions, and returns:
+
+1. **Gap table:** each keyword with every domain's position (top 20 by default), Bing searches, a rough Google estimate, a difficulty band and intent, sorted into Semrush's categories (Shared, Missing, Weak, Strong, Untapped, Unique).
+2. **Estimated visits** per keyword and domain: rough Google searches × click rate at that position. Always labelled as an estimate.
+3. **Top keywords to add:** Missing, Weak and Untapped keywords that fit our business, ordered by business fit, then competitor proof (the click rates at the competitors' positions), then lower difficulty, with Bing searches only breaking ties, each with a reason and, where Bing has numbers, a traffic lift.
+4. **Competitor brand keywords** listed separately, never as keywords to add.
+
+It checks about 60 keywords per analysis, not a full index like Semrush, and says so in the UI. Plan, research and sources: `docs/KEYWORD-GAP-PLAN.md`.
+
+### 5.12 Site Snapshot (added 29 Sep 2026)
+
+A third feature. The user enters one domain. The engine returns one page that summarises the site in search:
+
+1. **Site facts:** a link score (Open PageRank, 0 to 10, with its referring-domains count), popularity (Tranco rank and Majestic Million referring subnets), speed for real visitors (Chrome UX Report, pass or fail per Core Web Vital on phones), site age (registration date and first Wayback capture, both labelled), and the number of pages in the sitemap.
+2. **Search sample:** about 30 keywords the site's pages target, their Google positions (top 20), grouped as 1–3, 4–10, 11–20 and not in the top 20, with estimated visits labelled as rough, and the top pages by estimated visits.
+3. **Competitors on Google:** sites that appear most often in the top 10 for the site's keywords, with a button that opens Keyword Gap filled in.
+4. **Technical basics:** HTTPS, redirects, robots.txt, sitemap, homepage title and description length, `noindex`, canonical.
+
+It never shows totals that free data cannot support (total organic traffic, total keyword count, backlink lists), and it names the source of every number. Plan, research and sources: `docs/SITE-SNAPSHOT-PLAN.md`.
 
 ## 6. Search surfaces
 
@@ -76,7 +99,7 @@ Outcome tracking is out of scope: the team checks rankings, clicks and citations
 
 **In scope:** content-only input, phrase discovery, Google competitor collection and analysis, the outputs above, global English search with US results by default, configurable settings. AI-engine sampling in phase 3.
 
-**Out of scope for now:** page rewriting, outcome tracking, URL input, whole-site runs, other languages, country-by-country results, advice beyond words (schema markup, page structure blocks, author and date signals, crawler access), accounts and billing.
+**Out of scope for now:** page rewriting, outcome tracking, URL input, whole-site briefs (Keyword Gap compares whole domains, §5.11), other languages, country-by-country results, advice beyond words (schema markup, page structure blocks, author and date signals, crawler access), accounts and billing.
 
 ## 10. SEO principles the engine follows
 
@@ -118,3 +141,5 @@ Outcome tracking is out of scope: the team checks rankings, clicks and citations
 | Gap | Covered by almost no competitor, but searchers ask about it |
 | GEO | Generative Engine Optimization: getting cited in AI answers |
 | Striking distance | A page ranking about positions 4 to 20, where small edits can move it up |
+| CTR | Click-through rate: the share of searchers who click a result at a given position |
+| Keyword gap | Keywords competitors rank for where our site does not rank, or ranks lower (§5.11) |

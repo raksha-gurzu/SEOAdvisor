@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 24 September 2026. One brief per page (pooled across its 1 to 3 phrases). Thresholds marked "tune" are starting values to calibrate on the eval set.
+Last updated: 28 September 2026 (§13 Keyword Gap). One brief per page (pooled across its 1 to 3 phrases). Thresholds marked "tune" are starting values to calibrate on the eval set.
 
 ## 1. Approach: fat tools, thin agents
 
@@ -125,11 +125,11 @@ Default is **free mode** (`Settings.data_mode = "free"`): the only paid calls ar
 
 | Data | Source | Cost and limits |
 | --- | --- | --- |
-| Google results, People Also Ask, related searches | Serper.dev `/search` | 2,500 free queries on signup (one-time, no card) |
+| Google results, People Also Ask, related searches | Serper.dev `/search` | 2,500 free credits on signup (one-time, no card); 1 credit per page of 10 results, so a brief's top 20 costs 2 credits per phrase |
 | Google results when Serper is out of credits or has no key | Gemini `generateContent` with the `google_search` tool (`gemini-2.5-flash`) | Free tier, about 500 grounded requests a day. Returns cited pages, not a ranked list; no PAA. Only the phrase is sent. |
 | Autocomplete and question variants | Google suggest endpoint (`suggestqueries.google.com`) | Keyless, unofficial; cached by day, called politely |
 | Demand (search volume proxy) and related phrases | Bing Webmaster Tools API: `GetKeywordStats`, `GetRelatedKeywords` | Free API key; needs one verified site. Bing impressions, not Google volume. |
-| Site strength for difficulty | Tranco top-1M domain list | Keyless CSV download, refreshed monthly |
+| Site strength for difficulty | Tranco top-1M domain list | Keyless CSV download. Tranco publishes a new list daily (a 30-day average of several lists); we download it once a month. Measures popularity, not authority. |
 | Difficulty | Computed in code from the top 10 (§5.1) | Free |
 | Page content | Own fetcher: httpx + trafilatura; if too little text, a visible-text extractor (landing pages); headless Chrome fallback for JavaScript pages | Free; respects robots.txt |
 | Our pages' real queries (phase 4) | Google Search Console | Free for sites we can access |
@@ -383,22 +383,35 @@ seo-engine/
 ├── .env.example
 ├── docs/
 │   ├── PRD.md
-│   └── ARCHITECTURE.md
+│   ├── ARCHITECTURE.md
+│   └── KEYWORD-GAP-PLAN.md       Keyword Gap plan, research and decisions
 ├── src/seo_engine/
 │   ├── models.py
-│   ├── config.py
+│   ├── config.py                 Settings, Thresholds, GapSettings
+│   ├── pipeline.py               briefs
+│   ├── gap_pipeline.py           Keyword Gap (§13)
+│   ├── gap_report.py             Keyword Gap CSV
 │   ├── providers/
+│   │   ├── base.py               daily cache, retries, address guard, bounded downloads
 │   │   ├── search.py
+│   │   ├── serper.py
 │   │   ├── keywords.py
+│   │   ├── bing.py
+│   │   ├── autocomplete.py
 │   │   ├── fetcher.py
-│   │   ├── llm.py
+│   │   ├── sitemap.py            Keyword Gap step 1
+│   │   ├── llm.py                incl. DailyCachedLLM
 │   │   └── embeddings.py
 │   ├── tools/
 │   │   ├── keyword_research.py
 │   │   ├── serp_top.py
 │   │   ├── competitor_analysis.py
 │   │   ├── topic_coverage.py
-│   │   └── snippet_check.py
+│   │   ├── snippet_check.py
+│   │   ├── site_keywords.py      Keyword Gap step 2
+│   │   ├── rank_check.py         Keyword Gap step 3
+│   │   ├── keyword_metrics.py    Keyword Gap step 4
+│   │   └── keyword_gap.py        Keyword Gap step 5
 │   ├── agent/
 │   ├── workflow/
 │   └── mcp_server.py
@@ -430,7 +443,7 @@ seo-engine/
 
 | Method | Path | Does |
 | --- | --- | --- |
-| GET | `/api/health` | Which providers have keys (booleans only, never the keys) |
+| GET | `/api/health` | Which providers have keys (booleans only, never the keys); `missing_for_free_mode` (briefs) and `missing_for_keyword_gap` (DeepSeek and Serper) |
 | GET | `/api/settings/defaults` | Default run settings for the form |
 | POST | `/api/extract` | Import a public page's readable text for review (no private addresses; robots.txt respected) |
 | POST | `/api/runs` | Start a run from page text and settings; returns its id |
@@ -441,3 +454,117 @@ seo-engine/
 
 - **Frontend:** React + TypeScript (Vite) in `web/`. It polls `/api/runs/{id}` while a run is going, then shows the brief. The Vite dev server runs on port 4280 and proxies `/api` to `localhost:8420`; in production FastAPI serves `web/dist`.
 
+## 13. Keyword Gap (separate fixed pipeline)
+
+Plan, research ids (R1, D3, T2, G1...) and sources: `docs/KEYWORD-GAP-PLAN.md`. Settings: `GapSettings` in `config.py`. It is a second fixed pipeline, not an agent: the brief agent keeps its 5 tools (§2a).
+
+```text
+our domain + 1-4 competitors
+→ site reader (providers/sitemap.py)       robots.txt Sitemap lines → /sitemap.xml, /sitemap_index.xml,
+                                           /wp-sitemap.xml → homepage links; up to 30 pages per site
+→ site_keywords (tools/)                   LLM names each page's target phrase; + autocomplete, Bing related;
+                                           dedupe; demand gate; brand keywords listed, never checked;
+                                           business fit 0-3 for our site (LLM) BEFORE the Google check;
+                                           60 keywords balanced across sites (fit 1 only fills spare slots)
+→ rank_check (tools/)                      Serper pages of 10 up to depth 20; each domain's best position + URL;
+                                           demand, rough Google estimate, difficulty band, intent, visits
+  second pass (tools/site_keywords.py)     related searches from result pages where a competitor ranks;
+                                           same brand, demand and fit rules; up to 20 more (second_pass_keywords)
+→ keyword_gap (tools/)                     categories, keywords to add (fit, competitor proof, difficulty), traffic lift,
+                                           suggested competitors (sites on page 1 for good-fit keywords)
+→ GapRun saved to runs/gaps/
+```
+
+### 13.1 Data
+
+| Data | Source | Notes |
+| --- | --- | --- |
+| Google positions | Serper `/search`, `page` = 1, 2 … (`SerperSearch.top`, also used by briefs) | Google returns 10 results per request since Sep 2025 (R1). Absolute rank = (page − 1) × 10 + position (R5). Skip later pages once all domains are found (`stop_domains`). Pages hold ~9 results, so depth 20 gives ~19. No Gemini fallback: grounding has no positions. Credits out: keep results, list the rest as not checked. |
+| Demand | Bing Webmaster `GetKeywordStats` (exact-match impressions) | Shown as "Bing searches/month (approx.)". 0 is shown as "too low to measure on Bing". No key: autocomplete gives "searched" only. Live 29 Sep 2026: numbers for only 13 of 222 B2B keywords; after ~126 fast calls Bing returns 400 "ThrottleUser" (back off 5 s, 20 s, then mark "not measured"). Errors never contain the key. |
+| Rough Google searches | Bing × Google share ÷ Bing share (StatCounter, `GapSettings.search_shares`) | US ≈ 9.6. Order of magnitude only; never used for sorting. Weak where Bing share is tiny (India 78×, Nepal 35×). |
+| Difficulty | `difficulty.py` (Tranco, top 10 of the same SERP) | Shown as Low ≤ 30 / Medium ≤ 55 / High bands (same cut-offs as the brief UI). Tranco measures popularity, not authority (G5). |
+| Intent | `intent_from_types` over the top-10 page types | Same as briefs (§5.4). |
+| Site pages | `providers/sitemap.py` over `HttpFetcher` + daily cache | robots.txt per RFC 9309 (Protego; rule 8). Pages are de-duplicated by host without `www.` + path. Browser only for a JavaScript homepage (< 3 same-site links) and for sites of ≤ 8 pages. |
+
+LLM answers in Keyword Gap go through `DailyCachedLLM` (same prompt and model on the same day: stored answer, no cost), so re-runs pick the same keywords.
+
+### 13.2 Formulas (all plain code)
+
+```text
+ctr(p)            = GapSettings.ctr_curve()[p-1] for 1 ≤ p ≤ 20, else 0    # AWR Jul 2026, capped non-increasing
+google(k)         = bing(k) × google_per_bing(country)                    # None if no share data or switched off
+visits(k, domain) = google(k) × ctr(position of domain)
+traffic_lift(k)   = google(k) × (ctr(best competitor position) − ctr(our position))
+top keywords      = Missing/Weak/Untapped, business fit ≥ 2 (unknown fit counts as 2), no brands,
+                    ordered by (fit desc, proof desc, difficulty asc, Bing desc)   # owner, 29 Sep 2026
+proof(k)          = Σ ctr(position) over the competitors that rank (where competitors really get clicks)
+```
+
+### 13.3 Categories (Semrush definitions, G1; "ranks" = within the checked depth)
+
+| Category | Rule |
+| --- | --- |
+| Shared | every domain ranks |
+| Missing | every competitor ranks, we don't |
+| Weak | we rank, ≥ 1 competitor ranks, every ranking competitor is above us |
+| Strong | we rank, ≥ 1 competitor ranks, we are above every ranking competitor |
+| Untapped | ≥ 1 competitor ranks, we don't |
+| Unique | we rank, no competitor ranks |
+
+Categories overlap, as in Semrush (Missing ⊂ Untapped). Keywords no domain ranks for stay as rows with no category (listed in `unranked`, in the CSV and in the table's "No site ranks" tab).
+
+### 13.4 Cost
+
+Serper credits per analysis ≈ keywords × depth/10 (60 × 2 = 120 at defaults; 1 credit per page of 10, confirmed live 28 Sep 2026, R4); the number of domains does not change it. LLM: one discovery call per site and one business-fit call per 100 keywords (`fit_batch_size`), about one cent in total.
+
+### 13.5 API
+
+| Method | Path | Does |
+| --- | --- | --- |
+| POST | `/api/gaps` | Start an analysis |
+| GET | `/api/gaps` | List analyses |
+| GET | `/api/gaps/{id}` | Status, progress and results |
+| DELETE | `/api/gaps/{id}` | Delete an analysis |
+| GET | `/api/gaps/{id}/keywords.csv` | Download the keywords |
+| GET | `/api/gaps/defaults` | Default settings, countries, depths, keyword options |
+
+Pipeline: `gap_pipeline.py` (`run_gap`, steps sites → keywords → google → metrics → compare, live progress such as "34/60"). Store: `runs/gaps/` via the shared `JsonStore` (`api/store.py`). All 5 addresses pass the public-address guard. CSV cells starting with = + - @ are prefixed with an apostrophe (formula injection).
+
+### 13.6 Network safety (review, 29 Sep 2026)
+
+Sites choose many of the URLs we fetch (robots.txt `Sitemap:` lines, sitemap indexes, redirects), so:
+
+- Every request of `HttpFetcher` and `SiteReader`, redirect hops included, passes the public-address guard (`providers/base.py`: `guard_request` as an httpx request hook). "Public" means `is_global` for every address the name resolves to; an IPv4 address written as IPv6 is judged by its IPv4 part.
+- The connection goes to the address that was checked (`PublicOnlyBackend`, installed by `public_client`): the name is resolved once, so a DNS server cannot answer "public" to the check and "private" to the connection (DNS rebinding). DNS answers are never cached.
+- Headless Chrome never uses the network itself. Every browser request (document, scripts, redirects, popups) is served by `public_client` with the same size cap; only GET and HEAD. Service workers are blocked, WebSockets stay mocked (never connected), and anything that skips request routing (a `<link rel=preconnect>`) goes to a dead proxy. A blocked address is never retried in the browser. Tested offline (`test_the_browser_cannot_reach_a_blocked_address`).
+- Sitemaps are fetched only from the site's own domain; at most `max_sitemap_files` requests per site, whatever their outcome.
+- Downloads are capped in size and total time (`bounded_get`; pages 10 MB, sitemap files 10 MB); `.gz` sitemaps are unpacked with an output cap (`gunzip_capped`).
+- Only lasting answers are cached. A 5xx, 429, timeout or an unreachable robots.txt is not kept for the day.
+- Cache files are written atomically (temporary file, then rename). At most `browser_workers` headless browsers run at once.
+
+## 14. Site Snapshot (separate fixed pipeline)
+
+Plan, research (O1–O7, F1–F25), owner decisions (Q1–Q5) and sources: `docs/SITE-SNAPSHOT-PLAN.md`.
+
+One domain in, one summary page out. Steps 1 to 4 reuse the Keyword Gap code for a single site (`SiteReader`, `discover_keywords`, `check_ranks`, `keyword_metrics`, `suggest_competitors`) with `SnapshotSettings.gap` (30 keywords, depth 20, no second pass: about 60 Serper credits). Site facts run at the same time:
+
+| Fact | Source | Key | Notes |
+| --- | --- | --- | --- |
+| Link score | Open PageRank `/v1/domains/bulk` | `OPENPAGERANK_API_KEY` (free, 30,000 domains a month) | Common Crawl link graph; never called an "authority score" |
+| Popularity | Tranco (existing), Majestic Million CSV | none | Majestic is CC BY 3.0: show attribution |
+| Speed for real visitors | Chrome UX Report API `records:queryRecord`, origin, `PHONE` | `CRUX_API_KEY` (free, 150 queries a minute; optional: without it the tile says "not set up") | p75 against web.dev thresholds (`SnapshotSettings.vitals`); many small sites have no data; CC BY 4.0 |
+| Site age | RDAP (IANA bootstrap) and Wayback CDX first capture | none | Two different facts: current registration vs first seen online (F15); both shown |
+| Pages | Sitemap URL count from `SiteReader` | none | Never a `site:` count |
+
+All requests use `public_client` (§13.6). All numbers are computed in code.
+
+| Part | File |
+| --- | --- |
+| Providers | `providers/openpagerank.py`, `majestic.py`, `crux.py`, `domain_age.py`, `site_probe.py` (redirect hops, headers, robots.txt, homepage HTML only when robots.txt allows, under the page fetcher's rules: `fetcher.robots_body`) |
+| Technical checks | `tools/site_checks.py`: 10 checks, each pass, warn, fail or unknown, from Google Search Central rules (plan F21–F24) |
+| Summary | `tools/site_snapshot.py`: tiles, position groups, top pages, competitors |
+| Pipeline | `snapshot_pipeline.py`: steps site, keywords, google, facts, summary. Facts run in a thread pool from the start, bounded by `facts_deadline_s`; the pool is shut down without waiting. Only a bad address raises `SnapshotError`; every other failure (any exception in a fact source, an unreadable Tranco list for difficulty) is a note. Majestic and Tranco are asked for the exact domain. Page bodies are dropped before the run is stored. |
+| API | `/api/snapshots` (defaults, start, list, get, `keywords.csv`, delete); `SnapshotStore` in `runs/snapshots/`; `/api/health` gives `missing_for_site_snapshot` and `optional_for_site_snapshot` |
+| Web | `NewSnapshot.tsx`, `SnapshotView.tsx`, `SnapshotResults.tsx`, `LinkChart.tsx`; `RunProgress.tsx` is shared with Keyword Gap |
+
+List pages (the index of a content section such as `/blog/`) are skipped by the shared site reader (`GapSettings.listing_sections`, plan Q5), so Keyword Gap gets the same rule.

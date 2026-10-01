@@ -147,20 +147,20 @@ function DraftStep({ draft }: { draft: ContentDraft }) {
         <p className="muted small">Worth a look: {failing.map((c) => `${c.label.toLowerCase()}${c.detail ? ` (${c.detail})` : ''}`).join('; ')}.</p>
       )}
       <article className="draft">
-        <h1>{withPlaceholders(draft.h1)}</h1>
+        <h3 className="draft-h1">{withPlaceholders(draft.h1)}</h3>
         <p>{withPlaceholders(draft.intro)}</p>
         {draft.sections.map((s) => (
           <section key={s.heading}>
-            <h2>{withPlaceholders(s.heading)}</h2>
+            <h4 className="draft-h2">{withPlaceholders(s.heading)}</h4>
             <DraftBody text={s.body} />
           </section>
         ))}
         {draft.faq.length > 0 && (
           <section>
-            <h2>Frequently asked questions</h2>
+            <h4 className="draft-h2">Frequently asked questions</h4>
             {draft.faq.map((f) => (
               <div key={f.question} className="faq">
-                <h3>{withPlaceholders(f.question)}</h3>
+                <h5 className="draft-h3">{withPlaceholders(f.question)}</h5>
                 <p>{withPlaceholders(f.answer)}</p>
               </div>
             ))}

@@ -6,6 +6,7 @@ is sent to Google, never our page text.
 """
 
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -21,6 +22,11 @@ PROMPT = (
     "each, and cite every page."
 )
 REDIRECT_HOST = "vertexaisearch.cloud.google.com"
+
+
+def is_redirect(url: str) -> bool:
+    """A grounding redirect: the host itself, not a page that has the name in its path."""
+    return urlparse(url).hostname == REDIRECT_HOST
 
 
 def grounding_chunks(data: dict[str, Any]) -> tuple[list[tuple[str, str]], list[str]]:
@@ -62,7 +68,7 @@ class GeminiGroundedSearch:
 
     def resolve(self, uri: str) -> str:
         """Grounding URIs are Google redirects; follow one hop to the real page URL."""
-        if REDIRECT_HOST not in uri:
+        if not is_redirect(uri):
             return uri
         try:
             resp = self.resolver.get(uri)
@@ -70,7 +76,9 @@ class GeminiGroundedSearch:
             return uri
         return resp.headers.get("location") or uri
 
-    def top(self, phrase: str, country: str, n: int) -> SerpResults:
+    def top(
+        self, phrase: str, country: str, n: int, stop_domains: frozenset[str] = frozenset()
+    ) -> SerpResults:
         key = [self.models.grounding_model, PROMPT, phrase, country]  # new prompt, new cache entry
         cached = self.cache.get("grounded", key)
         if cached is None:
@@ -104,7 +112,7 @@ class GeminiGroundedSearch:
         items: list[SerpItem] = []
         seen: set[str] = set()
         for url, title in cached["pages"]:
-            if url in seen or REDIRECT_HOST in url:
+            if url in seen or is_redirect(url):
                 continue
             seen.add(url)
             items.append(

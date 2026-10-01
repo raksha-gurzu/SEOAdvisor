@@ -7,6 +7,7 @@ use almost no memory.
 import csv
 import io
 import sqlite3
+import threading
 import time
 import zipfile
 from pathlib import Path
@@ -18,13 +19,28 @@ TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
 
 
 class RankLookup(Protocol):
-    def rank(self, domain: str) -> int | None: ...
+    def rank(self, domain: str, exact: bool = False) -> int | None:
+        """The domain's rank; a subdomain falls back to its parent unless `exact`."""
+        ...
 
 
-def candidates(domain: str) -> list[str]:
-    """blog.shop.example.co.uk -> itself, then parents down to two labels."""
+def candidates(domain: str, exact: bool = False) -> list[str]:
+    """blog.shop.example.co.uk -> itself, then parents down to two labels (itself only when
+    `exact`: Site Snapshot must not show github.io's numbers for alice.github.io)."""
     labels = domain.lower().removeprefix("www.").split(".")
-    return [".".join(labels[i:]) for i in range(len(labels) - 1)]
+    names = [".".join(labels[i:]) for i in range(len(labels) - 1)]
+    return names[:1] if exact else names
+
+
+_BUILD_LOCKS: dict[str, threading.Lock] = {}
+_BUILD_LOCKS_GUARD = threading.Lock()
+
+
+def build_lock(path: Path) -> threading.Lock:
+    """One lock per list file for the whole process: parallel runs create their own reader
+    objects, and must not download or build the same list twice at once."""
+    with _BUILD_LOCKS_GUARD:
+        return _BUILD_LOCKS.setdefault(str(path), threading.Lock())
 
 
 class DictRanks:
@@ -33,8 +49,8 @@ class DictRanks:
     def __init__(self, ranks: dict[str, int]) -> None:
         self.ranks = ranks
 
-    def rank(self, domain: str) -> int | None:
-        return next((self.ranks[d] for d in candidates(domain) if d in self.ranks), None)
+    def rank(self, domain: str, exact: bool = False) -> int | None:
+        return next((self.ranks[d] for d in candidates(domain, exact) if d in self.ranks), None)
 
 
 class TrancoRanks:
@@ -57,23 +73,31 @@ class TrancoRanks:
             text = zf.read(zf.namelist()[0]).decode("utf-8")
         rows = ((d.lower(), int(r)) for r, d in csv.reader(io.StringIO(text)))
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.db_path.with_suffix(".tmp")
-        tmp.unlink(missing_ok=True)
-        with sqlite3.connect(tmp) as conn:
-            conn.execute("CREATE TABLE ranks (domain TEXT PRIMARY KEY, rank INTEGER)")
-            conn.executemany("INSERT OR IGNORE INTO ranks VALUES (?, ?)", rows)
-        tmp.replace(self.db_path)
+        tmp = self.db_path.with_suffix(f".{threading.get_ident()}.tmp")
+        try:
+            with sqlite3.connect(tmp) as conn:
+                conn.execute("CREATE TABLE ranks (domain TEXT PRIMARY KEY, rank INTEGER)")
+                conn.executemany("INSERT OR IGNORE INTO ranks VALUES (?, ?)", rows)
+            tmp.replace(self.db_path)
+        finally:
+            tmp.unlink(missing_ok=True)
 
     def _db(self) -> sqlite3.Connection:
-        if self._conn is None:
-            if not self._fresh():
-                self._build()
-            self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        return self._conn
+        with build_lock(self.db_path):
+            if self._conn is None:
+                if not self._fresh():
+                    try:
+                        self._build()
+                    except Exception:
+                        if not self.db_path.exists():
+                            raise
+                        # A failed refresh keeps the old list: a stale rank beats none.
+                self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            return self._conn
 
-    def rank(self, domain: str) -> int | None:
+    def rank(self, domain: str, exact: bool = False) -> int | None:
         db = self._db()
-        for d in candidates(domain):
+        for d in candidates(domain, exact):
             row = db.execute("SELECT rank FROM ranks WHERE domain = ?", (d,)).fetchone()
             if row:
                 return int(row[0])

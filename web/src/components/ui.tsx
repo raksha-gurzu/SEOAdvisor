@@ -62,3 +62,8 @@ export function TextIcon() {
     </svg>
   )
 }
+
+/** The colour of a domain in Keyword gap (0 = your site). Always shown next to its name. */
+export function DomainDot({ index }: { index: number }) {
+  return <span className="domain-dot" style={{ ['--dot' as string]: `var(--domain-${index % 5})` }} aria-hidden="true" />
+}

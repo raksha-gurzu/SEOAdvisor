@@ -16,6 +16,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-docx>=1.1",
+    "protego>=0.7",  # RFC 9309 robots.txt (wildcards, longest match); stdlib parser has neither
 ]
 
 [project.optional-dependencies]
@@ -43,4 +44,4 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["seo_engine", "fakes", "conftest", "test_pipeline"]
+known-first-party = ["seo_engine", "fakes", "gap_fakes", "snapshot_fakes", "conftest", "test_pipeline"]

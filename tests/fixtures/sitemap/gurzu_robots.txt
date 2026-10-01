@@ -1,0 +1,30 @@
+# robots.txt for Gurzu.com
+# This file tells search engines how to crawl and index your site
+
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /download/
+
+# Disallow thank you pages (already have noindex, but added here for extra protection)
+Disallow: /thankyou/
+Disallow: /design-ebook-downloaded-thank-you/
+
+# Disallow 404 page
+Disallow: /404.html
+
+# Disallow search parameters and filters (if applicable)
+Disallow: /*?*
+Disallow: /*&*
+
+# Disallow duplicate content paths (redirect pages)
+Disallow: /services/rails-maintenance/
+
+# Allow important assets
+Allow: /img/
+Allow: /_assets/
+
+# Sitemap location
+Sitemap: https://gurzu.com/sitemap.xml

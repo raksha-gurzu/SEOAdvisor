@@ -7,24 +7,26 @@ for the day, so a second run costs nothing and spends no Serper credits.
     python scripts/check_live.py serper tranco    # just some:
         serper | grounding | autocomplete | bing | tranco | llm | embed | fetch
         dataforseo (optional paid mode)
+        serper_pages (Keyword Gap step 0: page billing + AI Overview field, about 4 credits)
 """
 
 import sys
 
+import httpx
 from pydantic import BaseModel
 
-from seo_engine.config import Settings
+from seo_engine.config import Secrets, Settings
 from seo_engine.difficulty import computed_difficulty
 from seo_engine.models import Run
 from seo_engine.providers.autocomplete import GoogleAutocomplete
-from seo_engine.providers.base import DailyCache
+from seo_engine.providers.base import DailyCache, request_with_retry
 from seo_engine.providers.bing import BingKeywords
 from seo_engine.providers.embeddings import GeminiEmbeddings, cosine
 from seo_engine.providers.fetcher import HttpFetcher
 from seo_engine.providers.gemini_search import GeminiGroundedSearch
 from seo_engine.providers.llm import DeepSeekLLM
 from seo_engine.providers.search import DataForSEOSearch, SerpResults
-from seo_engine.providers.serper import SerperSearch
+from seo_engine.providers.serper import SERPER_URL, SerperSearch
 from seo_engine.providers.tranco import TrancoRanks
 
 PHRASE = "client project workspace"
@@ -40,6 +42,32 @@ def show_serp(serp: SerpResults) -> None:
         print(f"  #{item.rank:<2} {item.page_type:<10} {item.url}")
     print(f"  features: {serp.features}\n  PAA: {serp.people_also_ask[:3]}")
     print(f"  related: {serp.related_searches[:5]}")
+
+
+# docs/KEYWORD-GAP-PLAN.md R4 and T5: does num>10 still return >10 results, what does each
+# request cost, do page-2 positions restart at 1, and is there an AI Overview field?
+SERPER_PROBES: list[dict[str, int]] = [{"num": 10}, {"num": 20}, {"num": 10, "page": 2}]
+
+
+def probe_serper_pages(cache: DailyCache, country: str) -> None:
+    key = Secrets().serper_api_key.get_secret_value()
+    if not key:
+        raise RuntimeError("SERPER_API_KEY is not set in .env")
+    http = httpx.Client(base_url=SERPER_URL, timeout=30.0, headers={"X-API-KEY": key})
+    keys: set[str] = set()
+    for extra in SERPER_PROBES:
+        body = {"q": PHRASE, "gl": country.lower(), "hl": "en", **extra}
+        data = cache.get("serper_probe", body)
+        if data is None:
+            data = request_with_retry(http, "POST", "search", json=body).json()
+            cache.set("serper_probe", body, data)
+        organic = data.get("organic") or []
+        print(f"  {extra}: credits={data.get('credits')} results={len(organic)}")
+        print(f"    positions={[o.get('position') for o in organic]}")
+        keys |= set(data)
+    print(f"  response keys: {sorted(keys)}")
+    ai = sorted(k for k in keys if k.lower().startswith("ai") or "overview" in k.lower())
+    print(f"  AI Overview-like keys: {ai or 'none'}")
 
 
 def check(name: str, run: Run) -> None:
@@ -85,6 +113,8 @@ def check(name: str, run: Run) -> None:
         page = HttpFetcher(s).fetch("https://www.moxo.com/blog/what-is-a-client-portal")
         words, heads = page.word_count, len(page.headings)
         print(f"  {page.status} via {page.method}: {words} words, {heads} headings")
+    elif name == "serper_pages":
+        probe_serper_pages(cache, s.country)
     elif name == "dataforseo":
         show_serp(DataForSEOSearch.from_env(s, run.add_cost).top(PHRASE, s.country, 10))
     else:

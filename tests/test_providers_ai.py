@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 import httpx
 import pytest
@@ -6,8 +7,9 @@ import respx
 from pydantic import BaseModel
 
 from seo_engine.config import ModelSettings
+from seo_engine.providers.base import DailyCache
 from seo_engine.providers.embeddings import GEMINI_URL, GeminiEmbeddings
-from seo_engine.providers.llm import DeepSeekLLM, LLMOutputError
+from seo_engine.providers.llm import DailyCachedLLM, DeepSeekLLM, LLMOutputError
 
 CHAT = "https://api.deepseek.com/chat/completions"
 
@@ -71,3 +73,33 @@ def test_gemini_embeddings_batch_normalise_and_cache(cache, run) -> None:
     assert len(sent) == 2 and sent[0]["outputDimensionality"] == 768
     assert emb.embed(["beta"]) == [first[1]]
     assert route.call_count == 1 and len(run.costs) == 1
+
+
+class CountingLLM:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def structured(self, system, user, schema, tier="bulk"):
+        self.calls += 1
+        return schema(topics=[f"answer {self.calls}"])
+
+
+def test_daily_cached_llm_answers_once_per_day(tmp_path) -> None:
+    inner = CountingLLM()
+    day = [date(2026, 9, 29)]
+    llm = DailyCachedLLM(inner, DailyCache(tmp_path, today=lambda: day[0]), ModelSettings())
+    first = llm.structured("sys", "user", Topics)
+    assert llm.structured("sys", "user", Topics) == first and inner.calls == 1
+    assert llm.structured("sys", "other user", Topics).topics == ["answer 2"]
+    assert llm.structured("sys", "user", Topics, tier="judgment").topics == ["answer 3"]
+    day[0] = date(2026, 9, 30)
+    assert llm.structured("sys", "user", Topics).topics == ["answer 4"]  # a new day asks again
+
+
+def test_daily_cached_llm_asks_again_when_the_schema_changed(tmp_path) -> None:
+    inner = CountingLLM()
+    cache = DailyCache(tmp_path)
+    key = {"model": ModelSettings().bulk, "schema": "Topics", "system": "s", "user": "u"}
+    cache.set("llm", key, {"not_topics": 1})  # stored by an older version of the schema
+    out = DailyCachedLLM(inner, cache, ModelSettings()).structured("s", "u", Topics)
+    assert out.topics == ["answer 1"] and inner.calls == 1

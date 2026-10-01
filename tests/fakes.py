@@ -54,13 +54,19 @@ class FakeLLM:
 
 class FakeSearch:
     def __init__(
-        self, serps: dict[str, list[tuple[str, str]]], paa: dict[str, list[str]] | None = None
+        self,
+        serps: dict[str, list[tuple[str, str]]],
+        paa: dict[str, list[str]] | None = None,
+        related: dict[str, list[str]] | None = None,
     ):
         self.serps = serps  # phrase -> [(url, page_type)]
         self.paa = paa or {}
+        self.related = related or {}  # phrase -> Google's related searches
         self.calls: list[str] = []
 
-    def top(self, phrase: str, country: str, n: int) -> SerpResults:
+    def top(
+        self, phrase: str, country: str, n: int, stop_domains: frozenset[str] = frozenset()
+    ) -> SerpResults:
         self.calls.append(phrase)
         items = [
             SerpItem(
@@ -69,7 +75,11 @@ class FakeSearch:
             for i, (u, t) in enumerate(self.serps.get(phrase, [])[:n])
         ]
         return SerpResults(
-            phrase=phrase, country=country, items=items, people_also_ask=self.paa.get(phrase, [])
+            phrase=phrase,
+            country=country,
+            items=items,
+            people_also_ask=self.paa.get(phrase, []),
+            related_searches=self.related.get(phrase, []),
         )
 
 
@@ -79,11 +89,14 @@ class FakeKeywords:
         data: dict[str, tuple[int, int | None]],
         autocomplete: dict[str, list[str]] | None = None,
         ranked: dict[str, list[str]] | None = None,
+        related: dict[str, list[tuple[str, int]]] | None = None,
     ) -> None:
         self.data = data  # keyword -> (volume, difficulty)
         self.auto = autocomplete or {}
         self.ranked = ranked or {}
+        self.related = related or {}  # seed -> [(keyword, volume)]
         self.metric_calls = 0
+        self.unmeasured: set[str] = set()
 
     def _m(self, k: str) -> KeywordMetrics:
         vol, kd = self.data.get(k, (0, None))
@@ -97,7 +110,9 @@ class FakeKeywords:
         return self.auto.get(phrase, [])
 
     def suggestions(self, phrase: str, country: str, limit: int = 50) -> list[KeywordMetrics]:
-        return []
+        return [KeywordMetrics(keyword=k, volume=v) for k, v in self.related.get(phrase, [])][
+            :limit
+        ]
 
     def ranked_keywords(self, target: str, country: str, limit: int = 100) -> list[RankedKeyword]:
         return [

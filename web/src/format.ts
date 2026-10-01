@@ -29,6 +29,19 @@ export function competition(difficulty: number): { label: string; tone: Tone } {
   return { label: 'High competition', tone: 'bad' }
 }
 
+/** Intent as a chip: one vocabulary for every tool (the filter, the tables, the chips). */
+export const INTENT_CHIP: Record<string, { label: string; tone: string }> = {
+  commercial: { label: 'Commercial', tone: 'commercial' },
+  informational: { label: 'Informational', tone: 'info' },
+  transactional: { label: 'Transactional', tone: 'good' },
+  navigational: { label: 'Navigational', tone: '' },
+  unknown: { label: 'Unclear', tone: '' },
+}
+
+export function intentChip(intent: string): { label: string; tone: string } {
+  return INTENT_CHIP[intent] ?? INTENT_CHIP.unknown
+}
+
 export function intentText(intent: string): string {
   switch (intent) {
     case 'commercial': return 'People are comparing options'
@@ -120,4 +133,105 @@ export function draftToMarkdown(d: ContentDraft): string {
   }
   if (d.cta) out.push('', d.cta)
   return out.join('\n')
+}
+
+/** "https://www.Moxo.com/x" -> "moxo.com"; null when it is not a website address.
+ *  Mirrors site_origin() in providers/sitemap.py; the server has the final say. */
+export function siteHost(raw: string): string | null {
+  const text = raw.trim()
+  if (!text) return null
+  try {
+    const host = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`).hostname.toLowerCase().replace(/\.$/, '')
+    return host.includes('.') ? host.replace(/^www\./, '') : null
+  } catch {
+    return null
+  }
+}
+
+/** Serper credits for one analysis: 1 per page of 10 results for each keyword (plan R4). */
+export function maxCredits(keywords: number, depth: number): number {
+  return keywords * Math.ceil(depth / 10)
+}
+
+// ——— Keyword gap ———
+
+export const CATEGORY_TEXT: Record<string, { label: string; rule: string }> = {
+  missing: { label: 'Missing', rule: 'Every competitor ranks; you don’t' },
+  weak: { label: 'Weak', rule: 'You rank, but below every competitor that ranks' },
+  untapped: { label: 'Untapped', rule: 'At least one competitor ranks; you don’t' },
+  strong: { label: 'Strong', rule: 'You rank above every competitor that ranks' },
+  shared: { label: 'Shared', rule: 'Every site ranks' },
+  unique: { label: 'Unique', rule: 'Only you rank' },
+}
+
+/** Only web links from search results become links (no javascript: or data: URLs). */
+export function safeHref(url: string | null | undefined): string | undefined {
+  return url && /^https?:\/\//i.test(url) ? url : undefined
+}
+
+export function bingText(row: { bing_status: string; bing_searches: number | null }): string {
+  switch (row.bing_status) {
+    case 'measured': return (row.bing_searches ?? 0).toLocaleString()
+    case 'too_low': return 'Too low'
+    case 'not_measured': return 'Not measured'
+    default: return 'No Bing key'
+  }
+}
+
+export function bandText(band: string | null): { label: string; tone: Tone } {
+  if (band === 'low') return { label: 'Low', tone: 'good' }
+  if (band === 'medium') return { label: 'Medium', tone: 'warn' }
+  if (band === 'high') return { label: 'High', tone: 'bad' }
+  return { label: 'Unknown', tone: 'neutral' }
+}
+
+export function fitText(fit: number | null): string {
+  switch (fit) {
+    case 3: return 'Exact fit'
+    case 2: return 'Good fit'
+    case 1: return 'Loose fit'
+    case 0: return 'No fit'
+    default: return 'Not judged'
+  }
+}
+
+// ——— Site snapshot ———
+
+export const VITAL_TEXT: Record<string, { label: string; unit: 'ms' | 'score' }> = {
+  largest_contentful_paint: { label: 'Loading (LCP)', unit: 'ms' },
+  interaction_to_next_paint: { label: 'Response to taps (INP)', unit: 'ms' },
+  cumulative_layout_shift: { label: 'Layout stability (CLS)', unit: 'score' },
+}
+
+export function vitalValue(metric: string, p75: number): string {
+  if (VITAL_TEXT[metric]?.unit === 'score') return p75.toFixed(2)
+  return p75 >= 1000 ? `${(p75 / 1000).toFixed(1)} s` : `${Math.round(p75)} ms`
+}
+
+export function vitalTone(status: string): Tone {
+  return status === 'good' ? 'good' : status === 'poor' ? 'bad' : 'warn'
+}
+
+export const CHECK_TEXT: Record<string, { icon: string; word: string; tone: Tone }> = {
+  pass: { icon: '✓', word: 'Pass', tone: 'good' },
+  warn: { icon: '!', word: 'Check', tone: 'warn' },
+  fail: { icon: '✕', word: 'Fix', tone: 'bad' },
+  unknown: { icon: '?', word: 'Unknown', tone: 'neutral' },
+}
+
+/** "2018-10-13" -> "Oct 2018" (dates are calendar days: read them in UTC, never shifted). */
+export function monthYear(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`)
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' })
+}
+
+/** "https://gurzu.com/services/qa/" -> "/services/qa/" when it is on the site; else the host. */
+export function pathOf(url: string, domain: string): string {
+  try {
+    const u = new URL(url)
+    return u.hostname.replace(/^www\./, '') === domain ? u.pathname || '/' : u.host
+  } catch {
+    return url
+  }
 }

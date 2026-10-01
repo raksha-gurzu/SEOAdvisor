@@ -185,10 +185,318 @@ export interface Health {
   keys: Record<string, boolean>
   ready_free_mode: boolean
   missing_for_free_mode: string[]
+  missing_for_keyword_gap: string[]
+  missing_for_site_snapshot: string[]
+  optional_for_site_snapshot: string[]
 }
 
 export interface Defaults {
   settings: RunSettings
   countries: string[]
   min_words: number
+}
+
+// ——— Keyword gap (src/seo_engine/gap_pipeline.py and tools/) ———
+
+export type GapCategory = 'shared' | 'missing' | 'weak' | 'strong' | 'untapped' | 'unique'
+export type BingStatus = 'measured' | 'too_low' | 'not_measured' | 'no_key'
+
+export interface GapSettingsIn {
+  country: string
+  depth: number
+  keywords: number
+}
+
+export interface GapDefaults {
+  settings: GapSettingsIn
+  countries: string[]
+  max_competitors: number
+  depths: number[]
+  keyword_options: number[]
+}
+
+export interface SitePage {
+  url: string
+  status: string
+  title: string
+  headings: string[]
+  word_count: number
+}
+
+export interface SiteSample {
+  domain: string
+  origin: string
+  source: 'sitemap' | 'sitemap+links' | 'links' | 'none'
+  sitemaps: string[]
+  urls_found: number
+  sitemap_urls: number
+  sitemap_capped: boolean
+  pages: SitePage[]
+  notes: string[]
+}
+
+export interface GapKeyword {
+  keyword: string
+  sources: string[]
+  pages: Record<string, string>
+  bing_searches: number | null
+  autocomplete: boolean | null
+  brand_of: string | null
+  business_fit: number | null
+}
+
+export interface KeywordDiscovery {
+  keywords: GapKeyword[]
+  brand_keywords: GapKeyword[]
+  candidates: number
+  no_demand: number
+  not_checked: number
+  no_fit: number
+  ours_no_demand: string[]
+  notes: string[]
+}
+
+export interface SerpItem {
+  rank: number
+  url: string
+  domain: string
+  title: string
+  description: string
+  page_type: string
+}
+
+export interface KeywordRanking {
+  keyword: string
+  positions: Record<string, { position: number | null; url: string }>
+  results_seen: number
+  results: SerpItem[]
+  features: string[]
+  people_also_ask: string[]
+  related_searches: string[]
+}
+
+export interface GapRow {
+  keyword: string
+  bing_searches: number | null
+  bing_status: BingStatus
+  autocomplete: boolean | null
+  google_estimate: number | null
+  visits: Record<string, number | null>
+  difficulty: number | null
+  difficulty_band: 'low' | 'medium' | 'high' | null
+  intent: string
+  features: string[]
+  cluster: string
+  categories: GapCategory[]
+  positions: Record<string, number | null>
+  urls: Record<string, string>
+  pages: Record<string, string>
+  sources: string[]
+  business_fit: number | null
+  proof: number
+  traffic_lift: number | null
+}
+
+export interface Opportunity {
+  keyword: string
+  category: GapCategory
+  reason: string
+  business_fit: number | null
+  proof: number
+  difficulty: number | null
+  difficulty_band: string | null
+  traffic_lift: number | null
+  best_competitor: string
+  best_position: number
+  best_url: string
+}
+
+export interface CompetitorPanel {
+  domain: string
+  keywords_ranked: number
+  visits_known: number
+  top: { keyword: string; position: number; url: string; visits: number | null }[]
+}
+
+export interface KeywordGapResult {
+  domains: string[]
+  rows: GapRow[]
+  counts: Record<GapCategory, number>
+  top: Opportunity[]
+  competitors: CompetitorPanel[]
+  unranked: string[]
+  brand_keywords: GapKeyword[]
+  suggested_competitors: { domain: string; keywords: number; best_position: number; examples: string[] }[]
+  notes: string[]
+}
+
+export interface GapRun {
+  site: string
+  competitors: string[]
+  settings: { base: { country: string }; depth: number; keywords: number; max_competitors: number; pages_per_site: number }
+  domains: string[]
+  sites: SiteSample[]
+  discovery: KeywordDiscovery | null
+  ranks: { rankings: KeywordRanking[]; not_checked: string[]; notes: string[] } | null
+  result: KeywordGapResult | null
+  google_per_bing: number | null
+  ctr_source: string
+  shares_source: string
+  credits_used: number
+  cost_usd: number
+  notes: string[]
+}
+
+export interface GapRecord {
+  id: string
+  created_at: string
+  updated_at: string
+  status: RunStatus
+  error: string | null
+  steps: Step[]
+  run: GapRun
+}
+
+export interface GapSummary {
+  id: string
+  created_at: string
+  status: RunStatus
+  title: string
+  to_add: number | null
+  credits_used: number
+  cost_usd: number
+}
+
+// ——— Site Snapshot (docs/SITE-SNAPSHOT-PLAN.md) ———
+
+export type FactStatus = 'ok' | 'not_found' | 'not_set_up' | 'error'
+export type CheckStatus = 'pass' | 'warn' | 'fail' | 'unknown'
+
+export interface SnapshotSettingsIn {
+  country: string
+  keywords: number
+}
+
+export interface SnapshotDefaults {
+  settings: SnapshotSettingsIn
+  countries: string[]
+  keyword_options: number[]
+  depth: number
+}
+
+export interface LinkScore {
+  domain: string
+  status: FactStatus
+  score: number | null
+  rank: number | null
+  referring_domains: number | null
+  history: { month: string; score: number; estimated: boolean }[]
+  source: string
+  note: string
+}
+
+export interface Speed {
+  origin: string
+  status: 'ok' | 'no_data' | 'not_set_up' | 'error'
+  form_factor: string
+  p75: Record<string, number>
+  first_day: string | null
+  last_day: string | null
+  note: string
+}
+
+export interface DomainDates {
+  domain: string
+  registered: string | null
+  registered_via: string
+  registered_domain: string
+  first_seen: string | null
+  first_seen_url: string
+  notes: string[]
+}
+
+export interface SiteFacts {
+  link: LinkScore | null
+  majestic: { domain: string; global_rank: number; ref_subnets: number; ref_ips: number } | null
+  majestic_read: boolean
+  tranco_rank: number | null
+  tranco_read: boolean
+  speed: Speed | null
+  dates: DomainDates | null
+}
+
+export interface SnapshotKeyword {
+  keyword: string
+  position: number | null
+  url: string
+  ranked: boolean
+  bing_searches: number | null
+  bing_status: BingStatus
+  google_estimate: number | null
+  visits: number | null
+  difficulty: number | null
+  difficulty_band: 'low' | 'medium' | 'high' | null
+  intent: string
+  features: string[]
+}
+
+export interface SiteCheck {
+  key: string
+  label: string
+  status: CheckStatus
+  detail: string
+}
+
+export interface SnapshotResult {
+  domain: string
+  home: string
+  facts: SiteFacts
+  vitals: { metric: string; p75: number; status: string }[]
+  sitemap_urls: number
+  sitemap_files: number
+  sitemap_capped: boolean
+  keywords_checked: number
+  keywords_found: number
+  depth: number
+  visits: number | null
+  visits_keywords: number
+  groups: { label: string; low: number | null; high: number | null; count: number }[]
+  keywords: SnapshotKeyword[]
+  top_pages: { url: string; visits: number | null; keywords: string[]; best_position: number }[]
+  competitors: { domain: string; keywords: number; best_position: number; examples: string[] }[]
+  checks: { home: string; checks: SiteCheck[] } | null
+  notes: string[]
+}
+
+export interface SnapshotRun {
+  site: string
+  settings: { gap: { keywords: number; depth: number; base: { country: string } } }
+  domain: string
+  sample: SiteSample | null
+  ranks: { rankings: KeywordRanking[]; not_checked: string[] } | null
+  result: SnapshotResult | null
+  credits_used: number
+  cost_usd: number
+  notes: string[]
+}
+
+export interface SnapshotRecord {
+  id: string
+  created_at: string
+  updated_at: string
+  status: RunStatus
+  error: string | null
+  steps: Step[]
+  run: SnapshotRun
+}
+
+export interface SnapshotSummary {
+  id: string
+  created_at: string
+  status: RunStatus
+  title: string
+  found: number | null
+  checked: number | null
+  credits_used: number
+  cost_usd: number
 }

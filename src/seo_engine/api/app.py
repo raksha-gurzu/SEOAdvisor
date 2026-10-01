@@ -1,12 +1,10 @@
-"""FastAPI backend (docs/ARCHITECTURE.md §12). Runs the fixed pipeline in the background."""
+"""FastAPI backend (docs/ARCHITECTURE.md §12). Runs the fixed pipelines (briefs, Keyword Gap,
+Site Snapshot) in the background."""
 
-import ipaddress
-import socket
 import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlparse
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,13 +12,51 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from seo_engine.api.store import RunRecord, RunStore, RunSummary, new_record, now
-from seo_engine.config import PROJECT_ROOT, Secrets, Settings, SiteStrength
+from seo_engine.api.store import (
+    GapStore,
+    GapSummary,
+    RunStore,
+    RunSummary,
+    SnapshotStore,
+    SnapshotSummary,
+    StoredRecord,
+    new_gap_record,
+    new_record,
+    new_snapshot_record,
+    now,
+)
+from seo_engine.config import (
+    PROJECT_ROOT,
+    GapSettings,
+    Secrets,
+    Settings,
+    SiteStrength,
+    SnapshotSettings,
+)
 from seo_engine.deps import Deps, from_env
+from seo_engine.gap_pipeline import (
+    GapDeps,
+    GapError,
+    GapRun,
+    gap_deps_from_env,
+    run_gap,
+    site_origins,
+)
+from seo_engine.gap_report import keywords_csv
 from seo_engine.models import Run
 from seo_engine.pipeline import run_pipeline
+from seo_engine.providers.base import is_public_url  # noqa: F401  (public name of the API module)
 from seo_engine.providers.fetcher import HttpFetcher, PageFetcher
 from seo_engine.report import build_report, site_name
+from seo_engine.snapshot_pipeline import (
+    SnapshotDeps,
+    SnapshotError,
+    SnapshotRun,
+    run_snapshot,
+    snapshot_deps_from_env,
+    snapshot_origin,
+)
+from seo_engine.snapshot_report import snapshot_csv
 
 MIN_WORDS = 50
 COUNTRIES = ["US", "GB", "CA", "AU", "IN", "NP", "DE", "FR", "NZ", "IE", "SG"]
@@ -48,6 +84,77 @@ class RunRequest(BaseModel):
         return v.strip()
 
 
+GAP_DEFAULTS = GapSettings()
+
+
+class GapSettingsIn(BaseModel):
+    country: str = "US"
+    depth: int = GAP_DEFAULTS.depth  # results checked; 1 Serper credit per 10
+    keywords: int = Field(GAP_DEFAULTS.keywords, ge=10, le=100)
+
+    @field_validator("depth")
+    @classmethod
+    def offered_depth(cls, v: int) -> int:
+        if v not in GAP_DEFAULTS.depth_options:
+            raise ValueError(f"depth must be one of {GAP_DEFAULTS.depth_options}")
+        return v
+
+    @field_validator("country")
+    @classmethod
+    def known_country(cls, v: str) -> str:
+        if v.upper() not in COUNTRIES:
+            raise ValueError(f"country must be one of {', '.join(COUNTRIES)}")
+        return v.upper()
+
+
+class GapRequest(BaseModel):
+    site: str
+    competitors: list[str] = Field(min_length=1, max_length=GAP_DEFAULTS.max_competitors)
+    settings: GapSettingsIn = GapSettingsIn()
+
+
+class GapDefaults(BaseModel):
+    settings: GapSettingsIn
+    countries: list[str]
+    max_competitors: int
+    depths: list[int]
+    keyword_options: list[int]
+
+
+SNAPSHOT_DEFAULTS = SnapshotSettings()
+
+
+class SnapshotSettingsIn(BaseModel):
+    country: str = "US"
+    keywords: int = SNAPSHOT_DEFAULTS.gap.keywords  # 2 Serper credits each at depth 20
+
+    @field_validator("keywords")
+    @classmethod
+    def offered_keywords(cls, v: int) -> int:
+        if v not in SNAPSHOT_DEFAULTS.keyword_options:
+            raise ValueError(f"keywords must be one of {SNAPSHOT_DEFAULTS.keyword_options}")
+        return v
+
+    @field_validator("country")
+    @classmethod
+    def known_country(cls, v: str) -> str:
+        if v.upper() not in COUNTRIES:
+            raise ValueError(f"country must be one of {', '.join(COUNTRIES)}")
+        return v.upper()
+
+
+class SnapshotRequest(BaseModel):
+    site: str
+    settings: SnapshotSettingsIn = SnapshotSettingsIn()
+
+
+class SnapshotDefaults(BaseModel):
+    settings: SnapshotSettingsIn
+    countries: list[str]
+    keyword_options: list[int]
+    depth: int
+
+
 class ExtractRequest(BaseModel):
     url: str
 
@@ -67,22 +174,6 @@ def normalise_url(raw: str) -> str:
     return url
 
 
-def is_public_url(url: str) -> bool:
-    """Only fetch public web pages: never localhost, private or link-local addresses."""
-    host = urlparse(url).hostname
-    if not host:
-        return False
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except socket.gaierror:
-        return False
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            return False
-    return True
-
-
 COPY_INSTEAD = "Copy the text from the page instead."
 FETCH_ERRORS = {
     "robots_blocked": f"This site’s robots.txt blocks automated reading. {COPY_INSTEAD}",
@@ -95,6 +186,9 @@ class Health(BaseModel):
     keys: dict[str, bool]
     ready_free_mode: bool
     missing_for_free_mode: list[str]
+    missing_for_keyword_gap: list[str] = []
+    missing_for_site_snapshot: list[str] = []  # without these a snapshot cannot run
+    optional_for_site_snapshot: list[str] = []  # without these, parts show "not set up"
 
 
 class Defaults(BaseModel):
@@ -103,9 +197,22 @@ class Defaults(BaseModel):
     min_words: int
 
 
-def public_record(rec: RunRecord) -> dict[str, Any]:
+def public_record(rec: StoredRecord) -> dict[str, Any]:
     """Run record without competitor page text (large, and the UI only needs counts)."""
     return rec.model_dump(mode="json", exclude={"run": {"competitors": {"__all__": {"text"}}}})
+
+
+def public_gap_record(rec: StoredRecord) -> dict[str, Any]:
+    """Gap record without the page snippets read for keyword discovery."""
+    pages = {"pages": {"__all__": {"snippet"}}}
+    return rec.model_dump(mode="json", exclude={"run": {"sites": {"__all__": pages}}})
+
+
+def public_snapshot_record(rec: StoredRecord) -> dict[str, Any]:
+    """Snapshot record without the page snippets read for keyword discovery."""
+    return rec.model_dump(
+        mode="json", exclude={"run": {"sample": {"pages": {"__all__": {"snippet"}}}}}
+    )
 
 
 def create_app(
@@ -115,6 +222,8 @@ def create_app(
     web_dist: Path = WEB_DIST,
     fetcher_factory: Callable[[], PageFetcher] = lambda: HttpFetcher(Settings()),
     url_guard: Callable[[str], bool] = is_public_url,
+    gap_deps_factory: Callable[[GapRun], GapDeps] = gap_deps_from_env,
+    snapshot_deps_factory: Callable[[SnapshotRun], SnapshotDeps] = snapshot_deps_from_env,
 ) -> FastAPI:
     app = FastAPI(title="SEO Engine", version="0.1.0")
     app.add_middleware(
@@ -125,32 +234,59 @@ def create_app(
     )
     store = RunStore(runs_dir)
     store.fail_interrupted()
+    gaps = GapStore(runs_dir / "gaps")
+    gaps.fail_interrupted()
+    snapshots = SnapshotStore(runs_dir / "snapshots")
+    snapshots.fail_interrupted()
     slots = threading.BoundedSemaphore(max_parallel_runs)
 
-    def execute(run_id: str) -> None:
-        rec = store.get(run_id)
+    def run_in_background(
+        target: RunStore | GapStore | SnapshotStore, run_id: str, work: Callable
+    ) -> None:
+        """Shared by all features: one slot, live step progress, failures kept."""
+        rec = target.get(run_id)
         with slots:
             rec.status = "running"
-            store.save(rec)
+            target.save(rec)
 
             def on_step(name: str, status: str, detail: str) -> None:
                 step = next(s for s in rec.steps if s.name == name)
+                step.started_at = step.started_at or now()  # progress updates keep the start
                 step.status, step.detail = status, detail  # type: ignore[assignment]
-                if status == "running":
-                    step.started_at = now()
-                else:
+                if status == "done":
                     step.finished_at = now()
-                store.save(rec)
+                target.save(rec)
 
             try:
-                rec.details = run_pipeline(rec.run, deps_factory(rec.run), on_step)
+                work(rec, on_step)
                 rec.status = "done"
+            except (GapError, SnapshotError) as exc:  # the user can fix it: show as written
+                rec.status, rec.error = "failed", str(exc)
             except Exception as exc:  # report any failure to the UI instead of losing the run
                 rec.status, rec.error = "failed", f"{type(exc).__name__}: {exc}"
+            if rec.status == "failed":
                 for step in rec.steps:
                     if step.status == "running":
                         step.status, step.finished_at = "failed", now()
-            store.save(rec)
+            target.save(rec)
+
+    def execute(run_id: str) -> None:
+        def work(rec, on_step) -> None:
+            rec.details = run_pipeline(rec.run, deps_factory(rec.run), on_step)
+
+        run_in_background(store, run_id, work)
+
+    def execute_gap(run_id: str) -> None:
+        def work(rec, on_step) -> None:
+            run_gap(rec.run, gap_deps_factory(rec.run), on_step)
+
+        run_in_background(gaps, run_id, work)
+
+    def execute_snapshot(run_id: str) -> None:
+        def work(rec, on_step) -> None:
+            run_snapshot(rec.run, snapshot_deps_factory(rec.run), on_step)
+
+        run_in_background(snapshots, run_id, work)
 
     @app.get("/api/health")
     def health() -> Health:
@@ -161,10 +297,23 @@ def create_app(
             "serper": bool(s.serper_api_key.get_secret_value()),
             "bing": bool(s.bing_webmaster_api_key.get_secret_value()),
             "dataforseo": bool(s.dataforseo_login and s.dataforseo_password.get_secret_value()),
+            "openpagerank": bool(s.openpagerank_api_key.get_secret_value()),
+            "crux": bool(s.crux_api_key.get_secret_value()),
         }
         needed = ["deepseek", "gemini"]  # Serper and Bing improve results but have fallbacks
         missing = [k for k in needed if not keys[k]]
-        return Health(keys=keys, ready_free_mode=not missing, missing_for_free_mode=missing)
+        gap_missing = [k for k in ("deepseek", "serper") if not keys[k]]  # Bing is optional
+        return Health(
+            keys=keys,
+            ready_free_mode=not missing,
+            missing_for_free_mode=missing,
+            missing_for_keyword_gap=gap_missing,
+            # The LLM names the keywords; everything else only fills parts of the page.
+            missing_for_site_snapshot=[k for k in ("deepseek",) if not keys[k]],
+            optional_for_site_snapshot=[
+                k for k in ("serper", "openpagerank", "crux", "bing") if not keys[k]
+            ],
+        )
 
     @app.get("/api/settings/defaults")
     def defaults() -> Defaults:
@@ -236,6 +385,134 @@ def create_app(
             store.delete(run_id)
         except KeyError:
             raise HTTPException(404, "run not found") from None
+
+    @app.get("/api/gaps/defaults")
+    def gap_defaults() -> GapDefaults:
+        return GapDefaults(
+            settings=GapSettingsIn(),
+            countries=COUNTRIES,
+            max_competitors=GAP_DEFAULTS.max_competitors,
+            depths=GAP_DEFAULTS.depth_options,
+            keyword_options=GAP_DEFAULTS.keyword_options,
+        )
+
+    @app.post("/api/gaps", status_code=202)
+    def start_gap(req: GapRequest, background: BackgroundTasks) -> dict[str, str]:
+        base = GapSettings()
+        try:
+            sites = site_origins(req.site, req.competitors, base.max_competitors)
+        except GapError as exc:
+            raise HTTPException(422, str(exc)) from None
+        for domain, origin in sites:
+            if not url_guard(origin + "/"):  # the address as typed (www kept) is what we fetch
+                raise HTTPException(422, f"{domain} is not a public website we can reach.")
+        settings = GapSettings(
+            base=Settings(country=req.settings.country),
+            depth=req.settings.depth,
+            keywords=req.settings.keywords,
+        )
+        competitors = [c.strip() for c in req.competitors if c.strip()]
+        rec = new_gap_record(
+            GapRun(site=req.site.strip(), competitors=competitors, settings=settings)
+        )
+        gaps.save(rec)
+        background.add_task(execute_gap, rec.id)
+        return {"id": rec.id, "status": rec.status}
+
+    @app.get("/api/gaps")
+    def list_gaps() -> list[GapSummary]:
+        return gaps.list()
+
+    @app.get("/api/gaps/{run_id}")
+    def get_gap(run_id: str) -> dict[str, Any]:
+        try:
+            return public_gap_record(gaps.get(run_id))
+        except KeyError:
+            raise HTTPException(404, "analysis not found") from None
+
+    @app.get("/api/gaps/{run_id}/keywords.csv")
+    def gap_csv(run_id: str) -> Response:
+        try:
+            rec = gaps.get(run_id)
+        except KeyError:
+            raise HTTPException(404, "analysis not found") from None
+        if rec.run.result is None:
+            raise HTTPException(409, "this analysis isn’t finished yet")
+        name = "".join(ch if ch.isalnum() else "-" for ch in rec.run.domains[0])
+        return Response(
+            keywords_csv(rec.run),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="keyword-gap-{name}.csv"'},
+        )
+
+    @app.delete("/api/gaps/{run_id}", status_code=204)
+    def delete_gap(run_id: str) -> None:
+        try:
+            gaps.delete(run_id)
+        except KeyError:
+            raise HTTPException(404, "analysis not found") from None
+
+    @app.get("/api/snapshots/defaults")
+    def snapshot_defaults() -> SnapshotDefaults:
+        return SnapshotDefaults(
+            settings=SnapshotSettingsIn(),
+            countries=COUNTRIES,
+            keyword_options=SNAPSHOT_DEFAULTS.keyword_options,
+            depth=SNAPSHOT_DEFAULTS.gap.depth,
+        )
+
+    @app.post("/api/snapshots", status_code=202)
+    def start_snapshot(req: SnapshotRequest, background: BackgroundTasks) -> dict[str, str]:
+        try:
+            domain, origin = snapshot_origin(req.site)
+        except SnapshotError as exc:
+            raise HTTPException(422, str(exc)) from None
+        if not url_guard(origin + "/"):  # the address as typed (www kept) is what we fetch
+            raise HTTPException(422, f"{domain} is not a public website we can reach.")
+        gap = GapSettings(
+            base=Settings(country=req.settings.country),
+            keywords=req.settings.keywords,
+            second_pass_keywords=0,
+        )
+        rec = new_snapshot_record(
+            SnapshotRun(site=req.site.strip(), settings=SnapshotSettings(gap=gap))
+        )
+        snapshots.save(rec)
+        background.add_task(execute_snapshot, rec.id)
+        return {"id": rec.id, "status": rec.status}
+
+    @app.get("/api/snapshots")
+    def list_snapshots() -> list[SnapshotSummary]:
+        return snapshots.list()
+
+    @app.get("/api/snapshots/{run_id}")
+    def get_snapshot(run_id: str) -> dict[str, Any]:
+        try:
+            return public_snapshot_record(snapshots.get(run_id))
+        except KeyError:
+            raise HTTPException(404, "snapshot not found") from None
+
+    @app.get("/api/snapshots/{run_id}/keywords.csv")
+    def snapshot_keywords_csv(run_id: str) -> Response:
+        try:
+            rec = snapshots.get(run_id)
+        except KeyError:
+            raise HTTPException(404, "snapshot not found") from None
+        if rec.run.result is None:
+            raise HTTPException(409, "this snapshot isn’t finished yet")
+        name = "".join(ch if ch.isalnum() else "-" for ch in rec.run.domain)
+        return Response(
+            snapshot_csv(rec.run),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="site-snapshot-{name}.csv"'},
+        )
+
+    @app.delete("/api/snapshots/{run_id}", status_code=204)
+    def delete_snapshot(run_id: str) -> None:
+        try:
+            snapshots.delete(run_id)
+        except KeyError:
+            raise HTTPException(404, "snapshot not found") from None
 
     if (web_dist / "index.html").exists():  # production: serve the built React app
         root = web_dist.resolve()
